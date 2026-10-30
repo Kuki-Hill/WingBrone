@@ -1,33 +1,337 @@
-import {useEffect,useMemo,useRef} from 'react';
-import {Canvas,useFrame,useThree} from '@react-three/fiber';
-import * as T from 'three';
-import {Game,vectors} from './game';
-export type CaptureRequest={key:string;done:(canvas:HTMLCanvasElement)=>void;fail:()=>void};
-let seed=83;function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
-function Particles({game,low,calm}:{game:Game;low:boolean;calm:boolean}){
- const mat=useMemo(()=>new T.ShaderMaterial({transparent:true,depthWrite:false,vertexColors:true,uniforms:{clock:{value:0},motion:{value:1}},vertexShader:`attribute float size; attribute float kind; uniform float clock; uniform float motion; varying vec3 c; varying float a; void main(){vec3 p=position; p.z=mod(p.z+clock*7.0*motion+100.0,180.0)-110.0; p.x+=sin(clock*.25+p.y)*.25;vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv;gl_PointSize=clamp(size*100./max(1.,-mv.z),1.,10.); c=color;a=smoothstep(0.,15.,-mv.z)*(1.-smoothstep(70.,115.,-mv.z));}`,fragmentShader:`varying vec3 c;varying float a;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(c,a*(1.-smoothstep(.3,.5,d))*.8);}`}),[]);
- const geometry=useMemo(()=>{seed=83;const p:number[]=[],c:number[]=[],s:number[]=[],k:number[]=[];const add=(x:number,y:number,z:number,size:number,color:string)=>{p.push(x,y,z);const col=new T.Color(color);c.push(col.r,col.g,col.b);s.push(size);k.push(0);};
- for(let i=0;i<10000;i++){const z=random()*180-110;const side=random()>.5?1:-1;const x=side*(8+random()*32);const y=-5+random()*3+Math.sin(z*.07+x*.05)*4;add(x,y,z,.5+random(),['#526c53','#82936a','#a4b489'][i%3]);}
- for(let i=0;i<85;i++){const z=random()*180-110;const x=(random()>.5?1:-1)*(8+random()*24);const h=7+random()*17;for(let j=0;j<70;j++){const y=-5+j/70*h;add(x+Math.sin(y*.08)*.5,y,z,.75,'#607e64');if(j%9===0)for(let n=0;n<6;n++)add(x+(random()-.5)*5,y+random()*2,z+(random()-.5)*2,.8,'#94aa7c');}}
- for(let i=0;i<4000;i++)add((random()-.5)*90,(random()-.3)*45,random()*180-110,.3+random()*1.8,i%4?'#a8b99a':'#e4e6c8');
- const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('color',new T.Float32BufferAttribute(c,3));g.setAttribute('size',new T.Float32BufferAttribute(s,1));g.setAttribute('kind',new T.Float32BufferAttribute(k,1));return g;},[]);
- useEffect(()=>()=>{geometry.dispose();mat.dispose();},[geometry,mat]);useFrame(()=>{mat.uniforms.clock.value=game.phase==='home'?performance.now()/1000*.3:game.time;mat.uniforms.motion.value=calm?.3:1;geometry.setDrawRange(0,low?9000:geometry.attributes.position.count);});return <points geometry={geometry} material={mat} frustumCulled={false}/>;
+import { useEffect, useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import * as T from "three";
+import { Game, vectors, attackStrip } from "./game";
+export type CaptureRequest = {
+  key: string;
+  done: (canvas: HTMLCanvasElement) => void;
+  fail: () => void;
+};
+let seed = 83;
+function random() {
+  seed = (seed * 1664525 + 1013904223) >>> 0;
+  return seed / 4294967296;
 }
-function Hero({game,calm}:{game:Game;calm:boolean}){const ref=useRef<T.Group>(null);useFrame(()=>{if(!ref.current)return;const [x,y]=game.position;ref.current.position.set(x,y-1,1);ref.current.rotation.z=calm?0:-x*.075;ref.current.rotation.y=Math.sin(game.time)*.025;});return <group ref={ref}>
- <mesh position={[0,1.5,0]}><sphereGeometry args={[.29,16,12]}/><meshStandardMaterial color="#a7b19a"/></mesh>
- <mesh position={[0,1.83,0]}><coneGeometry args={[.92,.35,40]}/><meshStandardMaterial color="#b9b18b" roughness={1}/></mesh>
- <mesh position={[0,.56,0]}><coneGeometry args={[.65,1.6,8]}/><meshStandardMaterial color="#435e54" flatShading side={T.DoubleSide}/></mesh>
- <mesh position={[-.5,.7,.05]} rotation={[0,0,-.45]}><capsuleGeometry args={[.15,.65,4,8]}/><meshStandardMaterial color="#788c77"/></mesh>
- <mesh position={[.5,.7,.05]} rotation={[0,0,.45]}><capsuleGeometry args={[.15,.65,4,8]}/><meshStandardMaterial color="#788c77"/></mesh>
- {[-.24,.24].map(x=><mesh key={x} position={[x,-.43,0]}><capsuleGeometry args={[.12,.5,4,8]}/><meshStandardMaterial color="#344c45"/></mesh>)}
- <mesh position={[0,-.84,-.65]} rotation={[-Math.PI/2,0,0]}><boxGeometry args={[.25,4,.055]}/><meshStandardMaterial color="#d9e2cf" metalness={.45} roughness={.35}/></mesh>
- <mesh position={[0,-.8,1.1]}><boxGeometry args={[.7,.08,.11]}/><meshStandardMaterial color="#b3ad84"/></mesh>
- {[0,1,2].map(i=><mesh key={i} position={[(i-1)*.09,-.84,4+i*.7]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.03,4]}/><meshBasicMaterial color="#dbe5b8" transparent opacity={.3-i*.07} side={T.DoubleSide}/></mesh>)}
- </group>}
-function Attack({game}:{game:Game}){const ref=useRef<T.Group>(null);const sparks=useRef<T.Points>(null);const data=useMemo(()=>{const a=new Float32Array(500*3);for(let i=0;i<a.length;i++)a[i]=(random()-.5)*14;return a;},[]);useFrame(()=>{if(!ref.current)return;const active=game.phase==='trial';const t=game.cycle;ref.current.visible=active&&t>1&&t<4.35;ref.current.position.z=t<2?-31:-31+Math.min(1,(t-2)/1.5)*32;ref.current.rotation.z=0;if(sparks.current){sparks.current.visible=!!game.last&&game.time-game.last.time<.7;sparks.current.position.z=1;sparks.current.rotation.z=game.time*.2;}});const d=game.activeDirection;const v=vectors[d]??[0,0];return <>
- <group ref={ref}>{Array.from({length:9},(_,i)=>{const horizontal=d==='up'||d==='down';const along=(i-4)*1.1;const x=horizontal?along:(d==='left'?1.5:-1.5);const y=horizontal?(d==='up'?-1.8:1.8):along;return <mesh key={i} position={[x,y-1,0]} rotation={[0,0,horizontal?0:Math.PI/2]}><boxGeometry args={[1,.09,.16]}/><meshBasicMaterial color="#c6a071" transparent opacity={.85}/></mesh>})}<mesh position={[v[0],v[1]-1,0]}><ringGeometry args={[.7,.74,40]}/><meshBasicMaterial color="#eef0cd" transparent opacity={.6} side={T.DoubleSide}/></mesh></group>
- <points ref={sparks}><bufferGeometry><bufferAttribute attach="attributes-position" args={[data,3]}/></bufferGeometry><pointsMaterial size={.055} color="#ddc298" transparent opacity={.65} depthWrite={false}/></points>
- <group position={[0,.8,-36]} scale={1.4}><mesh><coneGeometry args={[.7,2.3,8]}/><meshBasicMaterial color="#788a72" wireframe/></mesh><mesh position={[0,1.5,0]}><sphereGeometry args={[.3,8,6]}/><meshBasicMaterial color="#9dba91" wireframe/></mesh></group>
- </>}
-function World({game,low,calm,capture,onReady}:{game:Game;low:boolean;calm:boolean;capture:CaptureRequest|null;onReady:()=>void}){const {gl,scene,camera}=useThree();const handled=useRef('');useEffect(onReady,[]);useFrame(()=>{const p=game.position;camera.position.x=T.MathUtils.lerp(camera.position.x,calm?0:p[0]*.1,.08);camera.lookAt(0,1,-25);if(capture&&capture.key!==handled.current){handled.current=capture.key;const target=new T.WebGLRenderTarget(1280,720);const previous=gl.getRenderTarget();const cam=camera.clone() as T.PerspectiveCamera;cam.aspect=1280/720;cam.updateProjectionMatrix();try{gl.setRenderTarget(target);gl.render(scene,cam);const pixels=new Uint8Array(1280*720*4);gl.readRenderTargetPixels(target,0,0,1280,720,pixels);const output=document.createElement('canvas');output.width=1280;output.height=720;const ctx=output.getContext('2d')!;const image=ctx.createImageData(1280,720);for(let y=0;y<720;y++)image.data.set(pixels.subarray((719-y)*1280*4,(720-y)*1280*4),y*1280*4);ctx.putImageData(image,0,0);capture.done(output);}catch{capture.fail();}finally{gl.setRenderTarget(previous);target.dispose();}}});return <><color attach="background" args={['#dce3d4']}/><fog attach="fog" args={['#dce3d4',24,110]}/><ambientLight intensity={2}/><directionalLight position={[-10,18,10]} intensity={3} color="#f5f0d4"/><Particles game={game} low={low} calm={calm}/><Hero game={game} calm={calm}/><Attack game={game}/></>}
-export default function Scene(props:{game:Game;low:boolean;calm:boolean;capture:CaptureRequest|null;onReady:()=>void}){return <Canvas camera={{position:[0,3.4,11],fov:58,near:.1,far:200}} dpr={[1,1.5]} gl={{antialias:true}} fallback={<span>此浏览器无法创建三维画布。</span>}><World {...props}/></Canvas>}
+function Particles({
+  game,
+  low,
+  calm,
+}: {
+  game: Game;
+  low: boolean;
+  calm: boolean;
+}) {
+  const mat = useMemo(
+    () =>
+      new T.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        vertexColors: true,
+        uniforms: { clock: { value: 0 }, motion: { value: 1 } },
+        vertexShader: `attribute float size; attribute float kind; uniform float clock; uniform float motion; varying vec3 c; varying float a; void main(){vec3 p=position; p.z=mod(p.z+clock*7.0*motion+100.0,180.0)-110.0; p.x+=sin(clock*.25+p.y)*.25;vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv;gl_PointSize=clamp(size*100./max(1.,-mv.z),1.,10.); c=color;a=smoothstep(0.,15.,-mv.z)*(1.-smoothstep(70.,115.,-mv.z));}`,
+        fragmentShader: `varying vec3 c;varying float a;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(c,a*(1.-smoothstep(.3,.5,d))*.8);}`,
+      }),
+    [],
+  );
+  const geometry = useMemo(() => {
+    seed = 83;
+    const p: number[] = [],
+      c: number[] = [],
+      s: number[] = [],
+      k: number[] = [];
+    const add = (
+      x: number,
+      y: number,
+      z: number,
+      size: number,
+      color: string,
+    ) => {
+      p.push(x, y, z);
+      const col = new T.Color(color);
+      c.push(col.r, col.g, col.b);
+      s.push(size);
+      k.push(0);
+    };
+    for (let i = 0; i < 10000; i++) {
+      const z = random() * 180 - 110;
+      const side = random() > 0.5 ? 1 : -1;
+      const x = side * (8 + random() * 32);
+      const y = -5 + random() * 3 + Math.sin(z * 0.07 + x * 0.05) * 4;
+      add(x, y, z, 0.5 + random(), ["#526c53", "#82936a", "#a4b489"][i % 3]);
+    }
+    for (let i = 0; i < 85; i++) {
+      const z = random() * 180 - 110;
+      const x = (random() > 0.5 ? 1 : -1) * (8 + random() * 24);
+      const h = 7 + random() * 17;
+      for (let j = 0; j < 70; j++) {
+        const y = -5 + (j / 70) * h;
+        add(x + Math.sin(y * 0.08) * 0.5, y, z, 0.75, "#607e64");
+        if (j % 9 === 0)
+          for (let n = 0; n < 6; n++)
+            add(
+              x + (random() - 0.5) * 5,
+              y + random() * 2,
+              z + (random() - 0.5) * 2,
+              0.8,
+              "#94aa7c",
+            );
+      }
+    }
+    for (let i = 0; i < 4000; i++)
+      add(
+        (random() - 0.5) * 90,
+        (random() - 0.3) * 45,
+        random() * 180 - 110,
+        0.3 + random() * 1.8,
+        i % 4 ? "#a8b99a" : "#e4e6c8",
+      );
+    const g = new T.BufferGeometry();
+    g.setAttribute("position", new T.Float32BufferAttribute(p, 3));
+    g.setAttribute("color", new T.Float32BufferAttribute(c, 3));
+    g.setAttribute("size", new T.Float32BufferAttribute(s, 1));
+    g.setAttribute("kind", new T.Float32BufferAttribute(k, 1));
+    return g;
+  }, []);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      mat.dispose();
+    },
+    [geometry, mat],
+  );
+  useFrame(() => {
+    mat.uniforms.clock.value =
+      game.phase === "home" ? (performance.now() / 1000) * 0.3 : game.time;
+    mat.uniforms.motion.value = calm ? 0.3 : 1;
+    geometry.setDrawRange(0, low ? 9000 : geometry.attributes.position.count);
+  });
+  return <points geometry={geometry} material={mat} frustumCulled={false} />;
+}
+function Hero({ game, calm }: { game: Game; calm: boolean }) {
+  const ref = useRef<T.Group>(null);
+  useFrame(() => {
+    if (!ref.current) return;
+    const [x, y] = game.position;
+    ref.current.position.set(x, y - 1, 1);
+    ref.current.rotation.z = calm ? 0 : -x * 0.075;
+    ref.current.rotation.y = Math.sin(game.time) * 0.025;
+  });
+  return (
+    <group ref={ref}>
+      <mesh position={[0, 1.5, 0]}>
+        <sphereGeometry args={[0.29, 16, 12]} />
+        <meshStandardMaterial color="#a7b19a" />
+      </mesh>
+      <mesh position={[0, 1.83, 0]}>
+        <coneGeometry args={[0.92, 0.35, 40]} />
+        <meshStandardMaterial color="#b9b18b" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.56, 0]}>
+        <coneGeometry args={[0.65, 1.6, 8]} />
+        <meshStandardMaterial color="#435e54" flatShading side={T.DoubleSide} />
+      </mesh>
+      <mesh position={[-0.5, 0.7, 0.05]} rotation={[0, 0, -0.45]}>
+        <capsuleGeometry args={[0.15, 0.65, 4, 8]} />
+        <meshStandardMaterial color="#788c77" />
+      </mesh>
+      <mesh position={[0.5, 0.7, 0.05]} rotation={[0, 0, 0.45]}>
+        <capsuleGeometry args={[0.15, 0.65, 4, 8]} />
+        <meshStandardMaterial color="#788c77" />
+      </mesh>
+      {[-0.24, 0.24].map((x) => (
+        <mesh key={x} position={[x, -0.43, 0]}>
+          <capsuleGeometry args={[0.12, 0.5, 4, 8]} />
+          <meshStandardMaterial color="#344c45" />
+        </mesh>
+      ))}
+      <mesh position={[0, -0.84, -0.65]} rotation={[-Math.PI / 2, 0, 0]}>
+        <boxGeometry args={[0.25, 4, 0.055]} />
+        <meshStandardMaterial
+          color="#d9e2cf"
+          metalness={0.45}
+          roughness={0.35}
+        />
+      </mesh>
+      <mesh position={[0, -0.8, 1.1]}>
+        <boxGeometry args={[0.7, 0.08, 0.11]} />
+        <meshStandardMaterial color="#b3ad84" />
+      </mesh>
+      {[0, 1, 2].map((i) => (
+        <mesh
+          key={i}
+          position={[(i - 1) * 0.09, -0.84, 4 + i * 0.7]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[0.03, 4]} />
+          <meshBasicMaterial
+            color="#dbe5b8"
+            transparent
+            opacity={0.3 - i * 0.07}
+            side={T.DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+function Attack({ game }: { game: Game }) {
+  const ref = useRef<T.Group>(null);
+  const sparks = useRef<T.Points>(null);
+  const data = useMemo(() => {
+    const a = new Float32Array(500 * 3);
+    for (let i = 0; i < a.length; i++) a[i] = (random() - 0.5) * 14;
+    return a;
+  }, []);
+  useFrame(() => {
+    if (!ref.current) return;
+    const active = game.phase === "trial";
+    const t = game.cycle;
+    ref.current.visible = active && t > 1 && t < 4.35;
+    ref.current.position.z =
+      t < 2 ? -31 : -31 + Math.min(1, (t - 2) / 1.5) * 32;
+    ref.current.rotation.z = 0;
+    if (sparks.current) {
+      sparks.current.visible = !!game.last && game.time - game.last.time < 0.7;
+      sparks.current.position.z = 1;
+      sparks.current.rotation.z = game.time * 0.2;
+    }
+  });
+  const d = game.activeDirection;
+  const v = vectors[d] ?? [0, 0];
+  return (
+    <>
+      <group ref={ref}>
+        {Array.from({ length: 17 }, (_, i) => {
+          const strip = attackStrip(d, i);
+          return (
+            <mesh key={i} position={strip.position}>
+              <boxGeometry args={strip.size} />
+              <meshBasicMaterial color="#c6a071" transparent opacity={0.5} />
+            </mesh>
+          );
+        })}
+        <mesh position={[v[0], v[1] - 1, 0]}>
+          <ringGeometry args={[0.7, 0.74, 40]} />
+          <meshBasicMaterial
+            color="#eef0cd"
+            transparent
+            opacity={0.6}
+            side={T.DoubleSide}
+          />
+        </mesh>
+      </group>
+      <points ref={sparks}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[data, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.055}
+          color="#ddc298"
+          transparent
+          opacity={0.65}
+          depthWrite={false}
+        />
+      </points>
+      <group position={[0, 0.8, -36]} scale={1.4}>
+        <mesh>
+          <coneGeometry args={[0.7, 2.3, 8]} />
+          <meshBasicMaterial color="#788a72" wireframe />
+        </mesh>
+        <mesh position={[0, 1.5, 0]}>
+          <sphereGeometry args={[0.3, 8, 6]} />
+          <meshBasicMaterial color="#9dba91" wireframe />
+        </mesh>
+      </group>
+    </>
+  );
+}
+function World({
+  game,
+  low,
+  calm,
+  capture,
+  onReady,
+}: {
+  game: Game;
+  low: boolean;
+  calm: boolean;
+  capture: CaptureRequest | null;
+  onReady: () => void;
+}) {
+  const { gl, scene, camera } = useThree();
+  const handled = useRef("");
+  useEffect(onReady, []);
+  useFrame(() => {
+    const p = game.position;
+    camera.position.x = T.MathUtils.lerp(
+      camera.position.x,
+      calm ? 0 : p[0] * 0.1,
+      0.08,
+    );
+    camera.lookAt(0, 1, -25);
+    if (capture && capture.key !== handled.current) {
+      handled.current = capture.key;
+      const target = new T.WebGLRenderTarget(1280, 720);
+      const previous = gl.getRenderTarget();
+      const cam = camera.clone() as T.PerspectiveCamera;
+      cam.aspect = 1280 / 720;
+      cam.updateProjectionMatrix();
+      try {
+        gl.setRenderTarget(target);
+        gl.render(scene, cam);
+        const pixels = new Uint8Array(1280 * 720 * 4);
+        gl.readRenderTargetPixels(target, 0, 0, 1280, 720, pixels);
+        const output = document.createElement("canvas");
+        output.width = 1280;
+        output.height = 720;
+        const ctx = output.getContext("2d")!;
+        const image = ctx.createImageData(1280, 720);
+        for (let y = 0; y < 720; y++)
+          image.data.set(
+            pixels.subarray((719 - y) * 1280 * 4, (720 - y) * 1280 * 4),
+            y * 1280 * 4,
+          );
+        ctx.putImageData(image, 0, 0);
+        capture.done(output);
+      } catch {
+        capture.fail();
+      } finally {
+        gl.setRenderTarget(previous);
+        target.dispose();
+      }
+    }
+  });
+  return (
+    <>
+      <color attach="background" args={["#dce3d4"]} />
+      <fog attach="fog" args={["#dce3d4", 24, 110]} />
+      <ambientLight intensity={2} />
+      <directionalLight
+        position={[-10, 18, 10]}
+        intensity={3}
+        color="#f5f0d4"
+      />
+      <Particles game={game} low={low} calm={calm} />
+      <Hero game={game} calm={calm} />
+      <Attack game={game} />
+    </>
+  );
+}
+export default function Scene(props: {
+  game: Game;
+  low: boolean;
+  calm: boolean;
+  capture: CaptureRequest | null;
+  onReady: () => void;
+}) {
+  return (
+    <Canvas
+      camera={{ position: [0, 3.4, 11], fov: 58, near: 0.1, far: 200 }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: true }}
+      fallback={<span>此浏览器无法创建三维画布。</span>}
+    >
+      <World {...props} />
+    </Canvas>
+  );
+}
