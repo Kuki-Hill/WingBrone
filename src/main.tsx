@@ -152,10 +152,10 @@ function App() {
       game.paused ? "已重新识别到人脸 · 可以继续" : "识别就绪 · 小幅转头即可",
     );
     const b = baseline.current;
-    poseState.current.yaw += (p.yaw - b.yaw - poseState.current.yaw) * 0.45;
+    poseState.current.yaw += (p.yaw - b.yaw - poseState.current.yaw) * 0.75;
     const targetPitch = p.pitch - b.pitch;
     const pitchFollow =
-      targetPitch < 0 && targetPitch < poseState.current.pitch ? 0.65 : 0.45;
+      targetPitch < 0 && targetPitch < poseState.current.pitch ? 0.85 : 0.75;
     poseState.current.pitch +=
       (targetPitch - poseState.current.pitch) * pitchFollow;
     const d = gate.current.update(
@@ -507,6 +507,16 @@ function App() {
             {game.phase === "trial" && (
               <>
                 <div className="beat-count">{signal.count || "·"}</div>
+                {game.cycle >= ATTACK_TIMING.cueStart &&
+                  game.cycle < ATTACK_TIMING.impact && (
+                    <div className="impact-countdown">
+                      距挥砍命中{" "}
+                      <strong>
+                        {(ATTACK_TIMING.impact - game.cycle).toFixed(1)}
+                      </strong>{" "}
+                      秒{signal.stage === "dodge" ? " · 现在动作即可" : ""}
+                    </div>
+                  )}
                 <div className="timing">
                   <span
                     className="safe-window"

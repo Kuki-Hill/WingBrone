@@ -24,6 +24,9 @@ export class HeadCamera {
   private reportPose: (p: Pose) => void = () => {};
   private base = "";
   private workerFailure = "";
+  private videoFrameHandle: number | null = null;
+  private lastSampleAt = -Infinity;
+  private lastMediaTime = -1;
   async start(
     onPose: (p: Pose) => void,
     onStatus: (s: string) => void,
@@ -38,8 +41,9 @@ export class HeadCamera {
       onStatus("正在申请摄像头…");
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 384 },
+          height: { ideal: 288 },
+          frameRate: { ideal: 30, max: 30 },
           ...(deviceId
             ? { deviceId: { exact: deviceId } }
             : { facingMode: "user" }),
@@ -84,7 +88,7 @@ export class HeadCamera {
           if (e.data.type === "ready") {
             clearTimeout(this.startupTimer);
             this.engine = "worker";
-            this.beginFrames(15);
+            this.beginFrames(30);
             onStatus("请正视屏幕，保持约两秒");
           } else if (e.data.type === "pose") onPose(e.data);
           else if (e.data.type === "error")
@@ -103,8 +107,24 @@ export class HeadCamera {
     }
   }
   private beginFrames(fps: number) {
+    this.stopFrames();
+    this.lastSampleAt = -Infinity;
+    if (typeof this.video.requestVideoFrameCallback === "function") {
+      const next = (now: number) => {
+        if (this.disposed) return;
+        this.videoFrameHandle = this.video.requestVideoFrameCallback(next);
+        if (this.busy || now - this.lastSampleAt < 1000 / fps - 2) return;
+        this.lastSampleAt = now;
+        void this.frame();
+      };
+      this.videoFrameHandle = this.video.requestVideoFrameCallback(next);
+    } else this.timer = window.setInterval(() => void this.frame(), 1000 / fps);
+  }
+  private stopFrames() {
     clearInterval(this.timer);
-    this.timer = window.setInterval(() => void this.frame(), 1000 / fps);
+    if (this.videoFrameHandle !== null)
+      this.video.cancelVideoFrameCallback?.(this.videoFrameHandle);
+    this.videoFrameHandle = null;
   }
   private async startCompatibility(reason: string) {
     if (this.disposed || this.engine === "compatibility") return;
@@ -112,7 +132,7 @@ export class HeadCamera {
     this.workerFailure = reason;
     clearTimeout(this.startupTimer);
     clearTimeout(this.frameTimer);
-    clearInterval(this.timer);
+    this.stopFrames();
     this.worker?.terminate();
     this.worker = null;
     this.busy = false;
@@ -141,7 +161,7 @@ export class HeadCamera {
       }
       this.detector = detector;
       this.reportStatus("兼容识别已启动 · 请正视屏幕校准");
-      this.beginFrames(10);
+      this.beginFrames(20);
     } catch (err) {
       if (!this.disposed)
         this.reportError(
@@ -151,6 +171,10 @@ export class HeadCamera {
   }
   async frame() {
     if (this.busy || this.disposed || this.video.readyState < 2) return;
+    if (Number.isFinite(this.video.currentTime)) {
+      if (this.video.currentTime === this.lastMediaTime) return;
+      this.lastMediaTime = this.video.currentTime;
+    }
     this.busy = true;
     try {
       if (this.engine === "compatibility") {
@@ -186,7 +210,7 @@ export class HeadCamera {
       if (this.engine !== "compatibility")
         void this.startCompatibility(String(err));
       else if (++this.frameFailures >= 3) {
-        clearInterval(this.timer);
+        this.stopFrames();
         this.reportError(`兼容识别读取画面失败：${String(err)}`);
       }
     }
@@ -195,7 +219,7 @@ export class HeadCamera {
     this.disposed = true;
     clearTimeout(this.startupTimer);
     clearTimeout(this.frameTimer);
-    clearInterval(this.timer);
+    this.stopFrames();
     this.worker?.terminate();
     this.worker = null;
     this.detector?.close();

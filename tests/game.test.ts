@@ -10,9 +10,9 @@ import {
   attackCue,
 } from "../src/game";
 describe("trial", () => {
-  it("the entire green window allows a successful dodge including 150ms input latency", () => {
+  it("the entire green window allows a successful dodge including 300ms input latency", () => {
     for (const d of directions)
-      for (const latency of [0, 0.15])
+      for (const latency of [0, 0.15, 0.3])
         for (
           let t = ATTACK_TIMING.cueStart;
           t <= ATTACK_TIMING.cueEnd + 0.00001;
@@ -31,10 +31,24 @@ describe("trial", () => {
   it("separates countdown, dodge window, and impact feedback", () => {
     expect(attackCue(1.1).count).toBe("3");
     expect(attackCue(1.8).count).toBe("2");
-    expect(attackCue(2.5).count).toBe("1");
+    expect(attackCue(2.2).count).toBe("1");
+    expect(ATTACK_TIMING.impact - ATTACK_TIMING.cueStart).toBe(1);
+    expect(attackCue(2.5).stage).toBe("dodge");
     expect(attackCue(3).stage).toBe("dodge");
     expect(attackCue(3.4).stage).toBe("impact");
     expect(attackCue(3.6).stage).toBe("recover");
+  });
+  it("lets the user move immediately at the one-second warning and remain safe at impact", () => {
+    for (const d of directions) {
+      const g = new Game();
+      g.start();
+      g.phase = "trial";
+      g.attacks[0] = d;
+      g.time = ATTACK_TIMING.cueStart;
+      g.trigger(d);
+      g.tick(1.001);
+      expect(g.hits).toBe(1);
+    }
   });
   it("balances directions and avoids triples", () => {
     const a = sequence();

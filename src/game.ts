@@ -13,17 +13,18 @@ export const vectors: Record<Direction, [number, number]> = {
   down: [0, -2.2],
 };
 export const thresholds = { horizontal: 1.6, vertical: 1.4 };
-export const ATTACK_TIMING = { impact: 3.5, cueStart: 2.85, cueEnd: 3.15 };
+export const ATTACK_TIMING = { impact: 3.5, cueStart: 2.5, cueEnd: 3.1 };
+export const DODGE_TIMING = { enter: 0.1, holdUntil: 1.1, duration: 1.4 };
 export function attackCue(cycle: number) {
   if (cycle < 1) return { stage: "rest", text: "凝神 · 等待蓄力", count: "" };
   if (cycle < ATTACK_TIMING.cueStart)
     return {
       stage: "prepare",
       text: "准备方向 · 等绿色提示",
-      count: String(Math.ceil((ATTACK_TIMING.cueStart - cycle) / 0.63334)),
+      count: String(Math.ceil((ATTACK_TIMING.cueStart - cycle) / 0.5)),
     };
   if (cycle <= ATTACK_TIMING.cueEnd)
-    return { stage: "dodge", text: "现在闪避", count: "GO" };
+    return { stage: "dodge", text: "现在转头闪避", count: "GO" };
   if (cycle < ATTACK_TIMING.impact)
     return { stage: "impact", text: "挥砍落下", count: "" };
   return { stage: "recover", text: "回到正视 · 准备下一次", count: "" };
@@ -119,16 +120,27 @@ export class Game {
   get position(): [number, number] {
     return this.positionAt(this.time);
   }
+  get dodgeTiming() {
+    return this.phase === "tutorial"
+      ? { enter: 0.1, holdUntil: 0.65, duration: 0.9 }
+      : DODGE_TIMING;
+  }
   positionAt(t: number): [number, number] {
     if (!this.dodge) return [0, 0];
     const age = t - this.dodge.start;
-    if (age < 0 || age >= 0.9) return [0, 0];
+    const timing = this.dodgeTiming;
+    if (age < 0 || age >= timing.duration) return [0, 0];
     const envelope =
-      age < 0.2
-        ? Math.sin(((age / 0.2) * Math.PI) / 2)
-        : age < 0.65
+      age < timing.enter
+        ? Math.sin(((age / timing.enter) * Math.PI) / 2)
+        : age < timing.holdUntil
           ? 1
-          : Math.cos((((age - 0.65) / 0.25) * Math.PI) / 2);
+          : Math.cos(
+              (((age - timing.holdUntil) /
+                (timing.duration - timing.holdUntil)) *
+                Math.PI) /
+                2,
+            );
     const v = vectors[this.dodge.direction];
     return [v[0] * envelope, v[1] * envelope];
   }
@@ -137,7 +149,7 @@ export class Game {
       this.paused ||
       this.countdown > 0 ||
       !["trial", "tutorial"].includes(this.phase) ||
-      (this.dodge && this.time - this.dodge.start < 0.9)
+      (this.dodge && this.time - this.dodge.start < this.dodgeTiming.duration)
     )
       return false;
     this.dodge = { direction, start: this.time };
@@ -232,7 +244,7 @@ export class HeadGate {
       this.since = now;
       return null;
     }
-    if (now - this.since >= (d === "down" ? 60 : 100)) {
+    if (now - this.since >= (d === "down" ? 40 : 60)) {
       this.armed = false;
       this.candidate = null;
       return d;

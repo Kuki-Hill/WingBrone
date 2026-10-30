@@ -626,6 +626,16 @@ p,
   font-style: normal;
   color: #bef2b4;
 }
+.impact-countdown {
+  font: 12px/1.7 sans-serif;
+  color: #cce5be;
+  margin: 6px 0;
+}
+.impact-countdown strong {
+  font-size: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
 .feedback {
   color: #c9edc3;
   text-shadow: 0 2px 25px #000;

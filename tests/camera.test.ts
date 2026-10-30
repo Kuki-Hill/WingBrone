@@ -84,6 +84,25 @@ describe("camera compatibility recovery", () => {
     expect(mocks.create).toHaveBeenCalledOnce();
     c.stop();
   });
+  it("samples latest frames without overlapping inference or reprocessing duplicate video frames", async () => {
+    const bitmap = { close: vi.fn() };
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(bitmap));
+    const c = new HeadCamera();
+    await c.start(vi.fn(), vi.fn(), vi.fn());
+    c.video.currentTime = 1;
+    const w = FakeWorker.current;
+    w.onmessage!({ data: { type: "ready" } });
+    await c.frame();
+    await c.frame();
+    expect(w.postMessage).toHaveBeenCalledTimes(2); // init + one frame
+    w.onmessage!({ data: { type: "pose", found: false } });
+    await c.frame();
+    expect(w.postMessage).toHaveBeenCalledTimes(2);
+    c.video.currentTime = 2;
+    await c.frame();
+    expect(w.postMessage).toHaveBeenCalledTimes(3);
+    c.stop();
+  });
   it("closes a detector which finishes loading after the user exits", async () => {
     let complete!: (value: unknown) => void;
     mocks.create.mockImplementation(
