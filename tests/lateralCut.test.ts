@@ -1,8 +1,47 @@
 import { describe, it, expect } from "vitest";
+import { PerspectiveCamera } from "three";
 import { ATTACK_TIMING, Game } from "../src/game";
-import { lateralCutPose } from "../src/lateralCut";
+import { ENEMY_SCALE, lateralCutPose } from "../src/lateralCut";
 
 describe("reading the two-handed diagonal attack", () => {
+  it.each(["left", "right"] as const)(
+    "ignites during the lift, clears the head and delivers a one-handed %s cut",
+    (side) => {
+      const lengthAt = (time: number) => {
+        const pose = lateralCutPose(side, time);
+        return pose.bladeBase.distanceTo(pose.bladeTip);
+      };
+      expect(lengthAt(0)).toBe(0);
+      expect(lengthAt(0.32)).toBe(0);
+      expect(lengthAt(0.43)).toBeCloseTo(lengthAt(0.54) / 2);
+      expect(lengthAt(0.54)).toBeCloseTo(6.42);
+      expect(lengthAt(4.5)).toBe(0);
+      expect(lateralCutPose(side, 0.54).frontGrip.y).toBeGreaterThan(
+        lateralCutPose(side, 0.32).frontGrip.y,
+      );
+      const guard = lateralCutPose(side, 1.1);
+      // Head top = 6.1 + 1.6; both fists (radius .37) must clear it.
+      expect(
+        Math.min(guard.frontGrip.y, guard.rearGrip.y) - 0.37,
+      ).toBeGreaterThan(7.7);
+      expect(guard.bladeTip.z).toBeLessThan(guard.frontGrip.z);
+      const camera = new PerspectiveCamera(58, 16 / 9, 0.1, 200);
+      camera.position.set(0, 3.4, 11);
+      camera.lookAt(0, 1.5, -23);
+      camera.updateMatrixWorld();
+      for (let t = 0.32; t <= ATTACK_TIMING.impact; t += 0.025) {
+        const pose = lateralCutPose(side, t);
+        const tip = pose.bladeTip.clone().multiplyScalar(ENEMY_SCALE);
+        tip.y += 1;
+        tip.z += pose.rootZ;
+        tip.project(camera);
+        expect(Math.max(Math.abs(tip.x), Math.abs(tip.y))).toBeLessThan(0.98);
+      }
+      const impact = lateralCutPose(side, ATTACK_TIMING.impact);
+      expect(impact.frontGrip.distanceTo(impact.hiltBase)).toBeCloseTo(1.15);
+      expect(impact.rearGrip.distanceTo(impact.hiltBase)).toBeGreaterThan(2);
+    },
+  );
   it.each(["left", "right"] as const)(
     "holds the blade pointing %s during the safe input window",
     (side) => {

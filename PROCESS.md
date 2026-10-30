@@ -42,7 +42,7 @@ A classmate who studies kendo tried the game and reported difficulty telling whi
 
 I revised the left and right attacks first. The opponent is 12% larger. Both hands lift the sword on the body's centreline, with the forearms and grip aligned along the blade. The blade settles at 45° toward the player's safe side. It turns red one second before impact, holds that posture through the input window, then sweeps diagonally down across to the other side. The sideways practice prompts teach the same rule. The design draws on the diagonal action of 袈裟斩 and the paired directions of 正胴 and 逆胴 as a visual cue for this game.
 
-The participant has not yet evaluated this revision. Whether the controls were explained before their first attempt was not recorded.
+A further revision raises both hands above the crown into a high guard. A pale blade extends from the hands in 0.22 seconds during the lift. After the red cue, the support hand releases and the sword hand extends through the diagonal cut. The participant has not yet evaluated this revision. Whether the controls were explained before their first attempt was not recorded.
 
 ## Remaining before final submission
 

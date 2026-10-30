@@ -263,6 +263,7 @@ export function ParticleEnemy({
     hilt = useRef<T.Group>(null);
   const steel = useMemo(() => new T.Color("#f3c58d"), []);
   const scarlet = useMemo(() => new T.Color("#ff1713"), []);
+  const saber = useMemo(() => new T.Color("#cbffeb"), []);
   const bladeTint = useRef(steel.clone());
   const practice = useRef({ step: -1, run: -1, start: 0 });
   const n = low ? 0.6 : 1;
@@ -301,12 +302,19 @@ export function ParticleEnemy({
       bone(leftForearm.current, pose.rearElbow, pose.rearGrip, 2.0);
       frontHand.current?.position.copy(pose.frontGrip);
       rearHand.current?.position.copy(pose.rearGrip);
-      bone(hilt.current, pose.rearGrip, pose.bladeBase, 1.1);
-      bone(weapon.current, pose.bladeBase, pose.bladeTip, 4.0);
-      bladeTint.current.copy(pose.red ? scarlet : steel);
+      if (hilt.current) hilt.current.visible = pose.bladeLength > 0;
+      if (weapon.current) weapon.current.visible = pose.bladeLength > 0;
+      if (pose.bladeLength > 0) {
+        bone(hilt.current, pose.hiltBase, pose.bladeBase, 1.1);
+        bone(weapon.current, pose.bladeBase, pose.bladeTip, 4.0);
+      }
+      bladeTint.current.copy(pose.red ? scarlet : saber);
       return;
     }
     bladeTint.current.copy(steel);
+    if (weapon.current)
+      weapon.current.visible =
+        game.phase === "trial" || game.phase === "tutorial";
     const { wind, cut, release } = motion(game);
     const strength = cut * (1 - release);
     if (root.current) {
@@ -420,7 +428,7 @@ export function ParticleEnemy({
       <group ref={left}>
         <Cloud game={game} form="limb" count={600} color="#79a69b" />
       </group>
-      <group ref={weapon}>
+      <group ref={weapon} visible={false}>
         <Cloud
           game={game}
           form="blade"
