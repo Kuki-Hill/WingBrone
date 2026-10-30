@@ -54,6 +54,24 @@ describe("trial", () => {
     h.update(15, 0, 650);
     expect(h.update(15, 0, 760)).toBe("right");
   });
+  it("recognizes a small downward nod quickly, without triggering on tiny drift or held posture", () => {
+    const h = new HeadGate();
+    expect(h.update(0, -3, 0)).toBe(null);
+    expect(h.update(0, -3, 200)).toBe(null);
+    expect(h.update(0, -6.5, 300)).toBe(null);
+    expect(h.update(0, -6.5, 365)).toBe("down");
+    expect(h.update(0, -6.5, 800)).toBe(null);
+    h.update(0, 0, 900);
+    h.update(0, -6.5, 950);
+    expect(h.update(0, -6.5, 1015)).toBe("down");
+  });
+  it("keeps upward threshold deliberate while allowing a smaller downward nod", () => {
+    const h = new HeadGate();
+    h.update(0, 6.5, 0);
+    expect(h.update(0, 6.5, 200)).toBe(null);
+    h.update(0, 10, 300);
+    expect(h.update(0, 10, 410)).toBe("up");
+  });
   it("does not score tutorial", () => {
     const g = new Game();
     g.start();

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HeadCamera, Pose } from "./camera";
+import { headLevels, directions, labels, type Direction } from "./game";
 export function CameraPreview({
   camera,
   pose,
@@ -7,6 +8,10 @@ export function CameraPreview({
   expanded,
   onDevice,
   onRestart,
+  relativePose,
+  sensitivity,
+  armed,
+  lastAction,
 }: {
   camera: HeadCamera | null;
   pose: Pose | null;
@@ -14,6 +19,10 @@ export function CameraPreview({
   expanded: boolean;
   onDevice: (id: string) => void;
   onRestart: () => void;
+  relativePose: { yaw: number; pitch: number } | null;
+  sensitivity: number;
+  armed: boolean;
+  lastAction: { direction: Direction; accepted: boolean; until: number } | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -42,6 +51,12 @@ export function CameraPreview({
   }, [stream]);
   const visible = expanded || show;
   const box = pose?.found ? pose.box : null;
+  const levels =
+    relativePose && pose?.found
+      ? headLevels(relativePose.yaw, relativePose.pitch, sensitivity)
+      : [0, 0, 0, 0];
+  const recent =
+    lastAction && performance.now() < lastAction.until ? lastAction : null;
   return (
     <aside
       className={`camera-preview ${visible ? "expanded" : "compact"}`}
@@ -51,6 +66,30 @@ export function CameraPreview({
         {pose?.found ? "● 已检测到人脸" : "○ 等待人脸"} ·{" "}
         {visible ? "本地预览" : "查看镜头"}
       </button>
+      {relativePose && (
+        <div className="head-response" aria-live="polite">
+          <strong>
+            {!pose?.found
+              ? "请让脸部保持入镜"
+              : recent
+                ? `${labels[recent.direction]}${recent.accepted ? " · 已闪避" : " · 已识别"}`
+                : !armed
+                  ? "请回正，准备下一次"
+                  : "小幅动作即可"}
+          </strong>
+          <div className="head-meters">
+            {directions.map((d, i) => (
+              <div key={d}>
+                <span>{labels[d]}</span>
+                <i>
+                  <b style={{ width: `${Math.min(1, levels[i]) * 100}%` }} />
+                </i>
+                <small>{Math.round(levels[i] * 100)}%</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div
         className="camera-image"
         ref={host}

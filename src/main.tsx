@@ -50,6 +50,11 @@ function App() {
   const [photoError, setPhotoError] = useState("");
   const camera = useRef<HeadCamera | null>(null);
   const gate = useRef(new HeadGate());
+  const lastHeadAction = useRef<{
+    direction: Direction;
+    accepted: boolean;
+    until: number;
+  } | null>(null);
   const baseline = useRef<{ yaw: number; pitch: number } | null>(null);
   const samples = useRef<Pose[]>([]);
   const poseState = useRef({ yaw: 0, pitch: 0 });
@@ -82,6 +87,8 @@ function App() {
     update();
   }
   function stopCamera() {
+    lastHeadAction.current = null;
+    poseState.current = { yaw: 0, pitch: 0 };
     camera.current?.stop();
     camera.current = null;
     baseline.current = null;
@@ -97,6 +104,7 @@ function App() {
     setError("");
   }
   function recalibrate() {
+    lastHeadAction.current = null;
     poseState.current = { yaw: 0, pitch: 0 };
     gate.current = new HeadGate();
     baseline.current = null;
@@ -145,15 +153,23 @@ function App() {
     );
     const b = baseline.current;
     poseState.current.yaw += (p.yaw - b.yaw - poseState.current.yaw) * 0.45;
+    const targetPitch = p.pitch - b.pitch;
+    const pitchFollow =
+      targetPitch < 0 && targetPitch < poseState.current.pitch ? 0.65 : 0.45;
     poseState.current.pitch +=
-      (p.pitch - b.pitch - poseState.current.pitch) * 0.45;
+      (targetPitch - poseState.current.pitch) * pitchFollow;
     const d = gate.current.update(
       poseState.current.yaw,
       poseState.current.pitch,
       performance.now(),
       sensitivityRef.current,
     );
-    if (d) game.trigger(d);
+    if (d)
+      lastHeadAction.current = {
+        direction: d,
+        accepted: game.trigger(d),
+        until: performance.now() + 1000,
+      };
   }
   function enableCamera(selectedDevice?: string) {
     if (selectedDevice) device.current = selectedDevice;
@@ -341,6 +357,10 @@ function App() {
         <CameraPreview
           camera={camera.current}
           pose={latestPose}
+          relativePose={calibrated ? poseState.current : null}
+          sensitivity={sensitivity}
+          armed={gate.current.armed}
+          lastAction={lastHeadAction.current}
           status={status}
           expanded={game.phase === "home" || game.paused}
           onDevice={(id) => enableCamera(id)}

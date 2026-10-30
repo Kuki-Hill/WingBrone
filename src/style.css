@@ -389,6 +389,44 @@ footer {
   text-align: left;
   font: 12px sans-serif;
 }
+.head-response {
+  margin: 10px 0;
+  color: #cfe9c9;
+  font: 11px/1.6 sans-serif;
+}
+.head-response strong {
+  font-weight: 400;
+}
+.head-meters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 9px;
+  margin-top: 6px;
+}
+.head-meters > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.head-meters span {
+  font-size: 10px;
+  min-width: 21px;
+}
+.head-meters i {
+  width: 36px;
+  height: 3px;
+  background: #c4d6c233;
+  display: block;
+}
+.head-meters b {
+  display: block;
+  height: 3px;
+  background: #b1f1a1;
+}
+.head-meters small {
+  font: 9px sans-serif !important;
+  min-width: 25px;
+}
 .camera-image {
   position: relative;
   overflow: hidden;

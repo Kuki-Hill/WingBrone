@@ -193,6 +193,17 @@ export class Game {
     if (next >= 60) this.phase = "results";
   }
 }
+// Looking down tends to hide the eyes sooner than looking up. Require a
+// smaller intentional nod instead of making the player tuck their chin.
+export const headThresholds = { left: 12, right: 12, up: 9, down: 6 };
+export function headLevels(yaw: number, pitch: number, sensitivity = 1) {
+  return [
+    -yaw / headThresholds.left,
+    yaw / headThresholds.right,
+    pitch / headThresholds.up,
+    -pitch / headThresholds.down,
+  ].map((v) => Math.max(0, v * sensitivity));
+}
 export class HeadGate {
   armed = true;
   candidate: Direction | null = null;
@@ -203,9 +214,7 @@ export class HeadGate {
     now: number,
     sensitivity = 1,
   ): Direction | null {
-    const values = [-yaw / 12, yaw / 12, pitch / 9, -pitch / 9].map(
-      (v) => v * sensitivity,
-    );
+    const values = headLevels(yaw, pitch, sensitivity);
     if (Math.max(...values) < 0.5) {
       this.armed = true;
       this.candidate = null;
@@ -223,7 +232,7 @@ export class HeadGate {
       this.since = now;
       return null;
     }
-    if (now - this.since >= 100) {
+    if (now - this.since >= (d === "down" ? 60 : 100)) {
       this.armed = false;
       this.candidate = null;
       return d;
