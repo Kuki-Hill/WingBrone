@@ -83,11 +83,11 @@ Desktop-first; no audio. The character animation is procedural. Webcam quality, 
 
 ## Validation and submission status
 
-The latest implementation has **42 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
+The latest implementation has **46 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
 
 The author confirmed the keyboard practice and earlier game-image PNG download in their browser, and reported camera direction, downward-response and latency issues that informed revisions. The newest portrait keepsake still needs manual verification.
 
-A classmate who studies kendo tried the game and found the dodge direction hard to read from the opponent. The left/right attacks now use a two-handed sword cue. Dodge toward the raised tip when the blade turns red. The feedback and design changes are recorded in [PROCESS.md](PROCESS.md). A current gameplay screenshot and a playtest of this revision are still pending. See [CREDITS.md](CREDITS.md) for acknowledgements.
+A classmate who studies kendo tried the game and found the dodge direction hard to read from the opponent. The left/right attacks now use a two-handed sword cue. Dodge toward the raised tip when the blade turns red. For horizontal draws the opponent darts to either flank. Duck under a high draw and rise above a low draw. Each run varies the attack intervals and swing speeds, with shorter intervals later in the minute. The feedback and design changes are recorded in [PROCESS.md](PROCESS.md). A current gameplay screenshot and a playtest of this revision are still pending. See [CREDITS.md](CREDITS.md) for acknowledgements.
 
 Repository: https://github.com/Kuki-Hill/WingBrone
 Assignment deadline: **1 November 2026, 23:59 Hong Kong time**.

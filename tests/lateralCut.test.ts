@@ -5,7 +5,7 @@ import { ENEMY_SCALE, lateralCutPose } from "../src/lateralCut";
 
 describe("reading the two-handed diagonal attack", () => {
   it.each(["left", "right"] as const)(
-    "ignites during the lift, clears the head and delivers a one-handed %s cut",
+    "ignites during the lift, sets crown and chin grips and delivers a one-handed %s cut",
     (side) => {
       const lengthAt = (time: number) => {
         const pose = lateralCutPose(side, time);
@@ -19,12 +19,9 @@ describe("reading the two-handed diagonal attack", () => {
       expect(lateralCutPose(side, 0.54).frontGrip.y).toBeGreaterThan(
         lateralCutPose(side, 0.32).frontGrip.y,
       );
-      const guard = lateralCutPose(side, 1.1);
-      // Head top = 6.1 + 1.6; both fists (radius .37) must clear it.
-      expect(
-        Math.min(guard.frontGrip.y, guard.rearGrip.y) - 0.37,
-      ).toBeGreaterThan(7.7);
-      expect(guard.bladeTip.z).toBeLessThan(guard.frontGrip.z);
+      const guard = lateralCutPose(side, ATTACK_TIMING.cueStart);
+      expect(guard.frontGrip.y).toBeCloseTo(7.6);
+      expect(guard.rearGrip.y).toBeCloseTo(4.6);
       const camera = new PerspectiveCamera(58, 16 / 9, 0.1, 200);
       camera.position.set(0, 3.4, 11);
       camera.lookAt(0, 1.5, -23);
@@ -73,7 +70,7 @@ describe("reading the two-handed diagonal attack", () => {
         g.start();
         g.phase = "trial";
         g.attacks[0] = side;
-        g.time = t;
+        g.time = g.schedule[0].impact + t - ATTACK_TIMING.impact;
         g.trigger(axis.x < 0 ? "left" : "right");
         g.tick(ATTACK_TIMING.impact - t + 0.001);
         expect(g.hits).toBe(1);

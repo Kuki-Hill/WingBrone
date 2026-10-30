@@ -1,7 +1,8 @@
 import { useMemo, useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as T from "three";
-import { Game, thresholds, ATTACK_TIMING } from "./game";
+import { Game, thresholds, ATTACK_TIMING, RIDER_Y } from "./game";
+import { iaiCutPose } from "./iaiCut";
 import { ENEMY_SCALE, lateralCutPose, SLASH_RELEASE } from "./lateralCut";
 
 // Surface samples stay attached to their form while the shader circulates
@@ -148,7 +149,7 @@ export function ParticleHero({
   useFrame(() => {
     if (!ref.current) return;
     const [x, y] = game.position;
-    ref.current.position.set(x, y - 1, 1);
+    ref.current.position.set(x, y + RIDER_Y, 1);
     ref.current.rotation.z = calm ? 0 : -x * 0.075;
   });
   const n = low ? 0.55 : 1;
@@ -202,46 +203,46 @@ export function ParticleHero({
           />
         </group>
       ))}
-      <group position={[0, -0.83, 1.3]} rotation={[-Math.PI / 2, 0, 0]}>
-        <Cloud
-          game={game}
-          form="blade"
-          count={700}
-          color="#e2edbf"
-          scale={[1.4, 4.4, 1]}
-        />
-      </group>
-      <group position={[-0.35, -0.82, 1.25]} rotation={[0, 0, -Math.PI / 2]}>
-        <Cloud
-          game={game}
-          form="limb"
-          count={100}
-          color="#e2cd91"
-          scale={[0.3, 0.7, 0.3]}
-        />
-      </group>
-      <group position={[0, -0.86, 2]} rotation={[Math.PI / 2, 0, 0]}>
-        <Cloud
-          game={game}
-          form="robe"
-          count={450}
-          color="#5da999"
-          scale={[0.35, 7, 0.08]}
-        />
+      <group position={[0, -0.83, 0]} rotation={[0, 0.98, 0]} scale={1.3}>
+        <group position={[0, 0, 1.3]} rotation={[-Math.PI / 2, 0, 0]}>
+          <Cloud
+            game={game}
+            form="blade"
+            count={700}
+            color="#e2edbf"
+            scale={[1.4, 4.4, 1]}
+          />
+        </group>
+        <group position={[-0.35, 0, 1.25]} rotation={[0, 0, -Math.PI / 2]}>
+          <Cloud
+            game={game}
+            form="limb"
+            count={100}
+            color="#e2cd91"
+            scale={[0.3, 0.7, 0.3]}
+          />
+        </group>
+        <group position={[0, 0, 1.3]} rotation={[Math.PI / 2, 0, 0]}>
+          <Cloud
+            game={game}
+            form="limb"
+            count={180}
+            color="#e4c995"
+            scale={[0.55, 0.78, 0.55]}
+          />
+        </group>
+        <group position={[0, -0.03, 2.08]} rotation={[Math.PI / 2, 0, 0]}>
+          <Cloud
+            game={game}
+            form="robe"
+            count={450}
+            color="#5da999"
+            scale={[0.18, 1.5, 0.08]}
+          />
+        </group>
       </group>
     </group>
   );
-}
-function motion(game: Game) {
-  const t = game.phase === "trial" ? game.cycle : 0;
-  const wind = T.MathUtils.smoothstep(t, 1, 2.7);
-  const cut = T.MathUtils.smoothstep(
-    t,
-    ATTACK_TIMING.cueStart,
-    ATTACK_TIMING.impact,
-  );
-  const release = T.MathUtils.smoothstep(t, 3.65, 4.8);
-  return { t, wind, cut, release };
 }
 export function ParticleEnemy({
   game,
@@ -260,7 +261,9 @@ export function ParticleEnemy({
     leftForearm = useRef<T.Group>(null),
     frontHand = useRef<T.Group>(null),
     rearHand = useRef<T.Group>(null),
-    hilt = useRef<T.Group>(null);
+    hilt = useRef<T.Group>(null),
+    sheath = useRef<T.Group>(null),
+    head = useRef<T.Group>(null);
   const steel = useMemo(() => new T.Color("#f3c58d"), []);
   const scarlet = useMemo(() => new T.Color("#ff1713"), []);
   const saber = useMemo(() => new T.Color("#cbffeb"), []);
@@ -269,36 +272,38 @@ export function ParticleEnemy({
   const n = low ? 0.6 : 1;
   useFrame(() => {
     const side = game.activeDirection;
-    const isSide =
-      (side === "left" || side === "right") &&
-      (game.phase === "trial" || game.phase === "tutorial");
+    const active = game.phase === "trial" || game.phase === "tutorial";
+    const lateral = side === "left" || side === "right";
+    let time = active ? game.cycle : 0;
+    if (game.phase === "tutorial") {
+      if (
+        practice.current.run !== game.run ||
+        practice.current.step !== game.tutorialIndex
+      )
+        practice.current = {
+          step: game.tutorialIndex,
+          run: game.run,
+          start: game.time,
+        };
+      time = Math.min(
+        ATTACK_TIMING.cueStart,
+        game.time - practice.current.start,
+      );
+    }
     for (const part of [leftForearm, frontHand, rearHand, hilt])
-      if (part.current) part.current.visible = isSide;
-    if (isSide) {
-      let time = game.cycle;
-      if (game.phase === "tutorial") {
-        if (
-          practice.current.run !== game.run ||
-          practice.current.step !== game.tutorialIndex
-        )
-          practice.current = {
-            step: game.tutorialIndex,
-            run: game.run,
-            start: game.time,
-          };
-        time = Math.min(
-          ATTACK_TIMING.cueStart,
-          game.time - practice.current.start,
-        );
-      }
+      if (part.current) part.current.visible = active;
+    if (sheath.current) sheath.current.visible = active && !lateral;
+    if (lateral) {
+      root.current?.scale.setScalar(ENEMY_SCALE);
+      head.current?.scale.setScalar(1);
       const pose = lateralCutPose(side, time);
       if (root.current) {
         root.current.position.set(0, 1, pose.rootZ);
         root.current.rotation.z = 0;
       }
-      bone(upper.current, new T.Vector3(2.4, 4.8, 0), pose.frontElbow, 2.7);
+      bone(upper.current, new T.Vector3(-2.4, 4.8, 0), pose.frontElbow, 2.7);
       bone(lower.current, pose.frontElbow, pose.frontGrip, 2.0);
-      bone(left.current, new T.Vector3(-2.4, 4.8, 0), pose.rearElbow, 2.7);
+      bone(left.current, new T.Vector3(2.4, 4.8, 0), pose.rearElbow, 2.7);
       bone(leftForearm.current, pose.rearElbow, pose.rearGrip, 2.0);
       frontHand.current?.position.copy(pose.frontGrip);
       rearHand.current?.position.copy(pose.rearGrip);
@@ -311,56 +316,23 @@ export function ParticleEnemy({
       bladeTint.current.copy(pose.red ? scarlet : saber);
       return;
     }
-    bladeTint.current.copy(steel);
-    if (weapon.current)
-      weapon.current.visible =
-        game.phase === "trial" || game.phase === "tutorial";
-    const { wind, cut, release } = motion(game);
-    const strength = cut * (1 - release);
-    if (root.current) {
-      root.current.position.set(0, 1, -23 + strength * 10);
-      root.current.rotation.z =
-        (game.activeDirection === "right" ? -1 : 1) * strength * 0.12;
-    }
-    const mirror = game.activeDirection === "right" ? -1 : 1;
-    const angle = 0.6 - wind * 1.45 + cut * 2.5 * (1 - release);
-    const shoulder = new T.Vector3(mirror * 2.6, 4.8, 0);
-    const elbow = shoulder
-      .clone()
-      .add(
-        new T.Vector3(
-          mirror * Math.sin(angle) * 2.5,
-          Math.cos(angle) * 2.5,
-          -wind,
-        ),
-      );
-    const hand = elbow
-      .clone()
-      .add(
-        new T.Vector3(
-          mirror * Math.sin(angle + 0.45) * 2.6,
-          Math.cos(angle + 0.45) * 2.6,
-          strength * 3,
-        ),
-      );
-    const tip = hand
-      .clone()
-      .add(
-        new T.Vector3(
-          -mirror * strength * 6,
-          5.5 * (1 - cut) - strength * 5,
-          strength * 8,
-        ),
-      );
-    bone(upper.current, shoulder, elbow, 2.8);
-    bone(lower.current, elbow, hand, 2.1);
-    bone(weapon.current, hand, tip, 3);
-    bone(
-      left.current,
-      new T.Vector3(-mirror * 2.5, 4.7, 0),
-      new T.Vector3(-mirror * (3 + wind), 1.5, -1),
-      2.5,
-    );
+    const flank = game.flank;
+    const pose = iaiCutPose(side, flank, time);
+    root.current?.position.copy(pose.root);
+    root.current?.scale.setScalar(pose.scale);
+    head.current?.scale.setScalar(pose.headScale);
+    bladeTint.current.copy(pose.red ? scarlet : steel);
+    if (weapon.current) weapon.current.visible = active;
+    const supportElbow = new T.Vector3(flank * 2.7, 3.8, 0.45);
+    bone(upper.current, new T.Vector3(-flank * 2.4, 4.8, 0), pose.elbow, 2.7);
+    bone(lower.current, pose.elbow, pose.hand, 2);
+    bone(left.current, new T.Vector3(flank * 2.4, 4.8, 0), supportElbow, 2.7);
+    bone(leftForearm.current, supportElbow, pose.sheathMouth, 2);
+    frontHand.current?.position.copy(pose.hand);
+    rearHand.current?.position.copy(pose.sheathMouth);
+    bone(hilt.current, pose.hand, pose.bladeBase, 1.4);
+    bone(sheath.current, pose.sheathMouth, pose.sheathEnd, 2.3);
+    bone(weapon.current, pose.bladeBase, pose.bladeTip, 4.1);
   });
   return (
     <group ref={root} position={[0, 1, -23]} scale={ENEMY_SCALE}>
@@ -373,15 +345,37 @@ export function ParticleEnemy({
         position={[0, -4, 0]}
         scale={[4.5, 9, 3]}
       />
-      <Cloud
-        game={game}
-        calm={calm}
-        form="orb"
-        count={1200}
-        color="#a4c8b4"
-        position={[0, 6.1, 0]}
-        scale={[1.25, 1.6, 1]}
-      />
+      <group ref={head} position={[0, 6.1, 0]}>
+        <Cloud
+          game={game}
+          calm={calm}
+          form="orb"
+          count={1200}
+          color="#a4c8b4"
+          scale={[1.25, 1.6, 1]}
+        />
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <group position={[s * 0.9, 1, 0]} rotation={[0, 0, -s * 0.35]}>
+              <Cloud
+                game={game}
+                form="horn"
+                count={220}
+                color="#dbbc81"
+                scale={[1, 2, 1]}
+              />
+            </group>
+            <Cloud
+              game={game}
+              form="orb"
+              count={60}
+              color="#ffd8a0"
+              position={[s * 0.5, 0.25, 1]}
+              scale={[0.18, 0.09, 0.08]}
+            />
+          </group>
+        ))}
+      </group>
       {[-1, 1].map((s) => (
         <group key={s}>
           <Cloud
@@ -391,23 +385,6 @@ export function ParticleEnemy({
             color="#91bcb1"
             position={[s * 2.4, 4.8, 0]}
             scale={[1.4, 0.9, 1]}
-          />
-          <group position={[s * 0.9, 7.1, 0]} rotation={[0, 0, -s * 0.35]}>
-            <Cloud
-              game={game}
-              form="horn"
-              count={220}
-              color="#dbbc81"
-              scale={[1, 2, 1]}
-            />
-          </group>
-          <Cloud
-            game={game}
-            form="orb"
-            count={60}
-            color="#ffd8a0"
-            position={[s * 0.5, 6.35, 1]}
-            scale={[0.18, 0.09, 0.08]}
           />
           <Cloud
             game={game}
@@ -419,6 +396,9 @@ export function ParticleEnemy({
           />
         </group>
       ))}
+      <group ref={sheath} visible={false}>
+        <Cloud game={game} form="limb" count={450 * n} color="#62867e" />
+      </group>
       <group ref={upper}>
         <Cloud game={game} form="limb" count={700} color="#9bc4a8" />
       </group>
@@ -496,7 +476,7 @@ export function ParticleSlash({ game, low }: { game: Game; low: boolean }) {
     const t = game.cycle;
     const d = game.activeDirection;
     const horizontal = d === "left" || d === "right";
-    const launch = horizontal ? SLASH_RELEASE : 2.75;
+    const launch = SLASH_RELEASE;
     ref.current.visible = game.phase === "trial" && t >= launch && t < 4.3;
     if (!ref.current.visible) return;
     const progress = T.MathUtils.clamp(
@@ -505,43 +485,59 @@ export function ParticleSlash({ game, low }: { game: Game; low: boolean }) {
       1,
     );
     const dissolve = Math.max(0, (t - ATTACK_TIMING.impact) / 0.8);
-    const releasePose = horizontal ? lateralCutPose(d, launch) : null;
     const origin = new T.Vector3();
-    const edge = horizontal ? thresholds.horizontal : thresholds.vertical;
-    const sign = d === "left" || d === "down" ? 1 : -1;
     const a = geometry.attributes.position.array as Float32Array;
+    geometry.attributes.position.needsUpdate = true;
+    material.opacity = (1 - dissolve) * 0.7;
+    if (!horizontal) {
+      // Sample successive blade poses to produce a flat fan at waist or
+      // chest height. The ribbon stays attached to the actual drawing arc.
+      const end = Math.min(t, ATTACK_TIMING.impact);
+      const flank = game.flank;
+      const ribbon = Array.from({ length: 16 }, (_, i) =>
+        iaiCutPose(d, flank, end - (i / 15) * 0.14),
+      );
+      for (let i = 0; i < count; i++) {
+        const [u, v, w] = samples[i];
+        const pose = ribbon[Math.floor(v * 16)];
+        origin
+          .lerpVectors(pose.bladeBase, pose.bladeTip, u)
+          .multiplyScalar(pose.scale)
+          .add(pose.root);
+        a[i * 3] = origin.x + (v - 0.5) * dissolve * 2;
+        a[i * 3 + 1] = origin.y + (w - 0.5) * (0.16 + dissolve * 1.6);
+        a[i * 3 + 2] = origin.z + dissolve * (w - 0.2) * 2;
+      }
+      return;
+    }
+    const releasePose = lateralCutPose(d, launch);
+    const edge = thresholds.horizontal;
+    const sign = d === "left" ? 1 : -1;
     for (let i = 0; i < count; i++) {
       const [u, v, w] = samples[i];
       const blocked = sign * (-edge + u * (edge + 7));
       const cross = (v - 0.5) * 14;
-      const x = horizontal ? blocked : cross;
-      const y = (horizontal ? cross : blocked) - 1;
+      const x = blocked;
+      const y = cross + RIDER_Y;
       // Emit from points along the raised blade in world space. At impact the
       // cloud reaches the existing unsafe half-plane on the opposite side.
-      if (releasePose)
-        origin
-          .lerpVectors(releasePose.bladeBase, releasePose.bladeTip, u)
-          .multiplyScalar(ENEMY_SCALE);
+      origin
+        .lerpVectors(releasePose.bladeBase, releasePose.bladeTip, u)
+        .multiplyScalar(ENEMY_SCALE);
+      origin.y += 1;
+      origin.z += releasePose.rootZ;
       const curve = Math.sin(progress * Math.PI) * (w - 0.5) * 9;
       a[i * 3] =
-        T.MathUtils.lerp(releasePose ? origin.x : sign * 5, x, progress) +
+        T.MathUtils.lerp(origin.x, x, progress) +
         curve +
         dissolve * (u - 0.5) * 5;
       a[i * 3 + 1] =
-        T.MathUtils.lerp(releasePose ? origin.y + 1 : 8, y, progress) +
+        T.MathUtils.lerp(origin.y, y, progress) +
         Math.sin(progress * Math.PI) * 3 +
         dissolve * (v - 0.5) * 5;
       a[i * 3 + 2] =
-        T.MathUtils.lerp(
-          releasePose ? releasePose.rootZ + origin.z : -13,
-          1,
-          progress,
-        ) -
-        (releasePose ? 0 : (1 - progress) * w * 5) +
-        dissolve * (w - 0.2) * 10;
+        T.MathUtils.lerp(origin.z, 1, progress) + dissolve * (w - 0.2) * 10;
     }
-    geometry.attributes.position.needsUpdate = true;
-    material.opacity = (1 - dissolve) * 0.7;
   });
   return (
     <points

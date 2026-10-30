@@ -36,7 +36,7 @@ class Boundary extends Component<
   }
 }
 function App() {
-  const game = useRef(new Game()).current;
+  const game = useState(() => new Game())[0];
   const [, redraw] = useState(0);
   const [mode, setMode] = useState<"keyboard" | "camera">("keyboard");
   const [status, setStatus] = useState("方向键已就绪");
@@ -515,22 +515,18 @@ function App() {
             </div>
             <h2>{cue}</h2>
             {game.phase === "tutorial" &&
+              (direction === "up" || direction === "down") && (
+                <p>看敌人的高度：高位横斩低头躲，低位横斩抬头躲。</p>
+              )}
+            {game.phase === "tutorial" &&
               (direction === "left" || direction === "right") && (
                 <p>看刀尖举向哪边，刀变红时往同一侧躲。</p>
               )}
             {game.phase === "trial" && (
               <>
-                <div className="beat-count">{signal.count || "·"}</div>
-                {game.cycle >= ATTACK_TIMING.cueStart &&
-                  game.cycle < ATTACK_TIMING.impact && (
-                    <div className="impact-countdown">
-                      距挥砍命中{" "}
-                      <strong>
-                        {(ATTACK_TIMING.impact - game.cycle).toFixed(1)}
-                      </strong>{" "}
-                      秒{signal.stage === "dodge" ? " · 现在动作即可" : ""}
-                    </div>
-                  )}
+                {signal.stage === "dodge" && (
+                  <div className="beat-count">GO</div>
+                )}
                 <div className="timing">
                   <span
                     className="safe-window"

@@ -14,6 +14,8 @@ export const vectors: Record<Direction, [number, number]> = {
 };
 export const thresholds = { horizontal: 1.6, vertical: 1.4 };
 export const ATTACK_TIMING = { impact: 3.5, cueStart: 2.5, cueEnd: 3.1 };
+export const SWING_START = 3.22;
+export const RIDER_Y = 0.5;
 export const DODGE_TIMING = { enter: 0.1, holdUntil: 1.1, duration: 1.4 };
 export function attackCue(cycle: number) {
   if (cycle < 1) return { stage: "rest", text: "凝神 · 等待蓄力", count: "" };
@@ -58,7 +60,7 @@ export function attackStrip(d: Direction, i: number) {
   };
 }
 export function sequence() {
-  let seed = 731;
+  let seed = Math.floor(Math.random() * 0x100000000);
   const a = directions.flatMap((d) => [d, d, d]);
   do {
     for (let i = a.length - 1; i > 0; i--) {
@@ -70,6 +72,53 @@ export function sequence() {
   return a;
 }
 export type Phase = "home" | "tutorial" | "trial" | "results";
+// Draw once per run. Normalise the attack slots to one minute, preserving a
+// one-second warning even as the gaps between later attacks get shorter.
+export function attackSchedule(attacks: Direction[], random = Math.random) {
+  const weights = attacks.map(
+    (_, i) => 6.8 - (3.6 * i) / (attacks.length - 1) + (random() - 0.5) * 0.64,
+  );
+  const total = weights.reduce((sum, v) => sum + v, 0);
+  let start = 0;
+  return attacks.map((direction, i) => {
+    const end =
+      i === attacks.length - 1 ? 60 : start + (60 * weights[i]) / total;
+    const impact = end - 0.82 - random() * 0.4;
+    const duration =
+      direction === "up" || direction === "down"
+        ? 0.13 + random() * 0.06
+        : 0.31 + random() * 0.07;
+    const slot = {
+      start,
+      end,
+      impact,
+      bladeStart: impact - duration,
+      flank: random() < 0.5 ? -1 : 1,
+    };
+    start = end;
+    return slot;
+  });
+}
+
+// Pose keyframes and the HUD share one phase coordinate. The collision is
+// evaluated against the corresponding absolute time in the same schedule.
+export function attackPhase(
+  time: number,
+  slot: ReturnType<typeof attackSchedule>[number],
+) {
+  const map = (a: number, b: number, from: number, to: number) =>
+    from + (to - from) * Math.max(0, Math.min(1, (time - a) / (b - a)));
+  const cue = slot.impact - 1,
+    close = slot.impact - 0.4;
+  if (time < cue) return map(slot.start, cue, 0, ATTACK_TIMING.cueStart);
+  if (time < close)
+    return map(cue, close, ATTACK_TIMING.cueStart, ATTACK_TIMING.cueEnd);
+  if (time < slot.bladeStart)
+    return map(close, slot.bladeStart, ATTACK_TIMING.cueEnd, SWING_START);
+  if (time < slot.impact)
+    return map(slot.bladeStart, slot.impact, SWING_START, ATTACK_TIMING.impact);
+  return map(slot.impact, slot.end, ATTACK_TIMING.impact, 5);
+}
 export type Outcome = {
   index: number;
   success: boolean;
@@ -92,8 +141,11 @@ export class Game {
   dodge: { direction: Direction; start: number } | null = null;
   last: Outcome | null = null;
   attacks = sequence();
+  schedule = attackSchedule(this.attacks);
   capture: Outcome | null = null;
   start() {
+    this.attacks = sequence();
+    this.schedule = attackSchedule(this.attacks);
     this.run++;
     this.phase = "tutorial";
     this.time = 0;
@@ -112,10 +164,19 @@ export class Game {
   get activeDirection() {
     return this.phase === "tutorial"
       ? directions[this.tutorialIndex]
-      : this.attacks[Math.min(11, Math.floor(this.time / 5))];
+      : this.attacks[this.attackIndex];
+  }
+  get attackIndex() {
+    const index = this.schedule.findIndex((slot) => this.time < slot.end);
+    return index < 0 ? this.schedule.length - 1 : index;
+  }
+  get flank() {
+    return this.schedule[
+      this.phase === "tutorial" ? this.tutorialIndex : this.attackIndex
+    ].flank;
   }
   get cycle() {
-    return this.time % 5;
+    return attackPhase(this.time, this.schedule[this.attackIndex]);
   }
   get position(): [number, number] {
     return this.positionAt(this.time);
@@ -180,7 +241,7 @@ export class Game {
       return;
     }
     for (let i = this.resolved + 1; i < 12; i++) {
-      const event = i * 5 + ATTACK_TIMING.impact;
+      const event = this.schedule[i].impact;
       if (event > next) break;
       const [x, y] = this.positionAt(event);
       const d = this.attacks[i];

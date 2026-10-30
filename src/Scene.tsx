@@ -191,7 +191,7 @@ export default function Scene(props: {
 }) {
   return (
     <Canvas
-      camera={{ position: [0, 3.4, 11], fov: 58, near: 0.1, far: 200 }}
+      camera={{ position: [0, 3.1, 12.5], fov: 58, near: 0.1, far: 200 }}
       dpr={[1, 1.5]}
       gl={{ antialias: true }}
       fallback={<span>此浏览器无法创建三维画布。</span>}

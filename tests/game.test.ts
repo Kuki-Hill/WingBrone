@@ -22,9 +22,9 @@ describe("trial", () => {
           g.start();
           g.phase = "trial";
           g.attacks[0] = d;
-          g.time = t + latency;
+          g.time = g.schedule[0].impact - ATTACK_TIMING.impact + t + latency;
           g.trigger(d);
-          g.tick(ATTACK_TIMING.impact - g.time + 0.001);
+          g.tick(g.schedule[0].impact - g.time + 0.001);
           expect(g.hits, `${d} at ${t} + ${latency}`).toBe(1);
         }
   });
@@ -44,7 +44,7 @@ describe("trial", () => {
       g.start();
       g.phase = "trial";
       g.attacks[0] = d;
-      g.time = ATTACK_TIMING.cueStart;
+      g.time = g.schedule[0].impact - 1;
       g.trigger(d);
       g.tick(1.001);
       expect(g.hits).toBe(1);
@@ -101,7 +101,7 @@ describe("trial", () => {
     const g = new Game();
     g.start();
     g.phase = "trial";
-    g.time = 3.05;
+    g.time = g.schedule[0].impact - 0.45;
     g.trigger(g.attacks[0]);
     g.tick(0.7);
     expect(g.hits).toBe(1);
@@ -134,7 +134,7 @@ describe("trial", () => {
     g.start();
     g.phase = "trial";
     for (let i = 0; i < 12; i++) {
-      g.time = i * 5 + 3.1;
+      g.time = g.schedule[i].impact - 0.4;
       g.dodge = null;
       if (i % 2 === 0) g.trigger(g.attacks[i]);
       g.tick(0.5);
@@ -147,11 +147,11 @@ describe("trial", () => {
       const g = new Game();
       g.start();
       g.phase = "trial";
-      g.time = early ? 1 : 3.1;
+      g.time = g.schedule[0].impact - (early ? 2.5 : 0.4);
       g.trigger(
         early ? g.attacks[0] : directions.find((d) => d !== g.attacks[0])!,
       );
-      g.tick(4 - g.time);
+      g.tick(g.schedule[0].impact + 0.5 - g.time);
       expect(g.hits).toBe(0);
     }
   });
