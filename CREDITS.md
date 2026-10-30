@@ -7,6 +7,7 @@
 - React Three Fiber：pmndrs，MIT，https://github.com/pmndrs/react-three-fiber 。
 - MediaPipe Tasks Vision 0.10.32：Google，Apache-2.0，https://github.com/google-ai-edge/mediapipe 。WASM 来自同版本 npm 包。
   两个 WASM JavaScript 加载器末尾增加 `globalThis.ModuleFactory = ModuleFactory`，使其可经动态 import 在模块 Worker 中加载；WASM 二进制未修改。
+  同时修复 `custom_emscripten_dbgn` 中块级函数声明在模块严格模式下不可见的问题，直接调用 `console.warn` 保留原有诊断信息，避免 `custom_dbg is not defined`。
 - Face Landmarker 模型：Google MediaPipe 官方发布，https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task 。SHA256: `64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`。
 - 模型及使用文档：https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker 。使用者应遵守官方模型与软件许可；本项目不对第三方模型主张原创权利。
 - Vite、Vitest、TypeScript：各自作者及开源许可，完整版本见 package-lock.json。
