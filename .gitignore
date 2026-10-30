@@ -3,3 +3,6 @@ dist/
 *.log
 .env*
 !.env.example
+captures/
+recordings/
+windborne-keepsake*.png

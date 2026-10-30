@@ -1,66 +1,93 @@
 # 御风 · Windborne
 
-An independent body-controlled browser experience for Assignment 3.
+**Assignment 3: An interactive experience** — an individual browser project.
 
-你是一名背对镜头、戴草帽的御剑者。通过小幅抬头、低头、左右转头，在不断生成的粒子竹海中躲避十二道剑气，结束时带走一张自己的镜头照片与成绩吐槽组成的 PNG 留念卡。
+A straw-hatted sword rider faces twelve attacks in a flowing particle bamboo forest. Turn your head left/right or look up/down to dodge. At the end, receive a locally generated portrait card with your score and a mischievous review of your performance.
 
-当前视觉版本采用黑色背景，角色、草帽、剑与巨型敌人全部由流动粒子组成。敌人蓄力后挥砍；按左下角方向箭头准备，等待 3-2-1 后的绿色“现在闪避 / GO”，动作后回正。
+一个以头部动作控制的御剑闪避体验：四方向练习 → 一分钟试炼 → 成绩、人脸留影与江湖吐槽。所有照片在浏览器本机处理。
 
-## Run
+## Idea and intended user
 
-使用 Node.js 22.12+（本项目在 Node 24 测试）和桌面 Chrome / Edge：
+For someone seated at a laptop trying body-based interaction for the first time. The aim is to make a small movement produce an understandable action, visible consequence, and a reason to try again. Keyboard controls let someone complete the same experience without a camera.
+
+**Input → response → feedback:** a deliberate head turn crosses a calibrated threshold → the rider dodges → the attack checks the rider's position → a hit/dodge message, combo and score explain the result. At the end, the score determines a playful caption. Captions use game performance, not facial appearance or identity.
+
+## Run locally
+
+Requirements: **Node.js 22.12+** (tested with Node 24), npm, a desktop browser with WebGL. Camera mode needs a webcam and permission; keyboard mode does not.
 
 ```sh
+git clone https://github.com/Kuki-Hill/WingBrone.git
+cd WingBrone
 npm ci
 npm run dev
 ```
 
-打开终端显示的 http://127.0.0.1:5174/ 。摄像头需 localhost 或 HTTPS；不要直接双击 index.html。运行时无需 API key 或外部推理服务。约 26 MB 的识别模型与 WASM 已包含在 public/vision，浏览器从同站点加载。
+Open **http://127.0.0.1:5174/**. Keep the terminal running. On Windows, after installing dependencies, you can also double-click `start-preview.cmd`.
+
+On Windows, stop this project's running preview before reinstalling dependencies with `npm ci`; otherwise its native build dependency can remain locked by the preview process.
 
 ```sh
 npm test
 npm run build
-npx vite preview --host 127.0.0.1 --port 5174
+npx vite preview --host 127.0.0.1 --port 5174 --strictPort
 ```
 
-生产文件在 dist。可部署到 HTTPS 静态托管服务。尚未发布线上预览。
+The production files are in `dist/`. Serve them over HTTPS if deploying publicly. Opening `index.html` directly is not supported. There is no hosted live demo in this first upload.
 
-## Intended user and interaction
+No API key, paid account or remote inference service is needed. The fixed-version MediaPipe model and WASM assets are included in `public/vision/` (approximately 26 MB). Runtime detection stays in the browser.
 
-面向坐在电脑前、第一次接触体感交互的同学。推荐普通笔记本自带摄像头、正面光照；避免大幅转动，保持眼睛能看到屏幕。
+## Controls and main loop
 
-1. 点击摄像头，允许权限后正视约两秒；或直接选择方向键。
-2. 完成四方向练习。练习动作约 0.9 秒；正式试炼动作约 1.4 秒，回正后才能再次触发。
-3. 观察剑气安全缺口；绿色“现在转头闪避”会在命中前 1 秒出现，此时就可以动作，无需等到最后。正式试炼一分钟，失误不会提前结束。
-4. Esc 暂停；暂停页可重校准、改用键盘或退出。切换标签页、人脸丢失也会暂停。
-5. 结算查看成绩与自动留影，下载 PNG 或打开图片保存，再挑战一次。
+1. Choose **摄像头体感** (camera) or **方向键体验** (keyboard).
+2. In camera mode, face the screen until calibration completes. The local preview shows face detection, direction strength and camera selection. Use small movements and keep your face in view.
+3. Complete the four practice directions. In keyboard mode use **← → ↑ ↓**. In camera mode turn left/right or look up/down. Return to neutral before the next gesture.
+4. During the 60-second trial, follow the direction arrow. The green **现在转头闪避 / GO** cue appears **one second before impact**; move then. A dodge remains displaced long enough to cover the attack. Mistakes do not end the trial early.
+5. **Esc** pauses. Resume with a countdown, recalibrate, switch to keyboard or exit. Window blur, a hidden tab or lost tracking also pauses attacks and the clock.
+6. Results show successful dodges out of 12, success rate and best combo. Download the PNG keepsake, open it to save, or retry.
 
-输入→响应→反馈：头部朝向超过阈值并保持 100ms → 御剑者移动 → 剑气抵达时检查位置 → 显示避开/命中、连击，并根据成功连击挑选纪念画面。相同规则适用于方向键。
+The portrait is captured from the camera during the trial. Without a usable face capture, the card clearly states that no photo was taken; it still shows the score and caption.
 
-## Screenshot and user trial
+## Screenshot
 
-项目作者已在本机确认能看见御剑人物，并通过方向键练习进入试炼。摄像头方向与 PNG 留影尚待实测；不把自动测试当作实际体验证据。
+The screenshot below is a **real cropped pause/recovery screen supplied during an earlier author test**, not a newly verified screenshot of the latest particle scene. The tracking logic has since been revised. A current gameplay screenshot remains to be added before final submission.
 
-提交前：完成一局，把真实画面保存为 `docs/screenshot.png`，然后在这里加入 `![Gameplay](docs/screenshot.png)`。游戏结算页可下载真实纪念图，也可用作展示素材。请按 PROCESS.md 完成另一位参与者的试用记录。
+<img src="docs/pause-state.png" width="300" alt="Earlier author test: pause screen with resume, recalibrate, keyboard fallback and exit controls">
 
-## Architecture
+## Error handling and fallback
 
-- src/game.ts：独立游戏时钟、单次闪避、攻击边界、判定和选图规则。
-- src/camera.ts / face.worker.ts：摄像头生命周期与 Worker 推理；同一时间只允许一帧待处理。
-- src/Scene.tsx：点阵竹林、御剑人物、攻击表现和按需离屏截图。
-- src/keepsake.ts / verdict.ts：镜头抓拍与按成绩分档的趣味评价，输出 1280×1000 PNG。保留完整照片比例，不裁掉脸部。
-- src/main.tsx：校准、输入、暂停、教学、结算与跨局截图保护。
+- Camera denied, unavailable or model load failure: explain the error and offer keyboard mode.
+- Worker error or timeout: automatically try local compatibility inference, without requesting the camera again.
+- Missing face: pause; recovered tracking requires explicit confirmation before countdown/resume. Slow inference is distinguished from a missing face.
+- Repeated start/input: no duplicate camera stream or queued long-press dodges.
+- WebGL failure: show an explanation; keyboard mode still requires WebGL.
+- No portrait available: produce an explicitly labelled no-photo scorecard.
+- Failed image export: retain the result and offer a retry. A new run cannot receive a previous run's asynchronous image.
 
-## Limitations
+## Privacy
 
-桌面优先，需要 WebGL。头部角度是基于面部变换的近似值，不是精密测量；方向正负、舒适阈值和识别稳定性仍需实际摄像头验证。没有音效。人物是程序化占位模型；环境为可复用的循环点阵空间。长时间低帧率、不同设备截图颜色与下载行为需要实测。
+Camera frames and the selected portrait stay in page memory. There is no video recording, image upload or automatic disk save. The user chooses whether to download the PNG. Restarting, exiting or switching input clears the current portrait. Exiting or switching to keyboard stops camera tracks.
 
-摄像头用于体感控制与人脸留念抓拍。照片仅暂存在页面内存中，用于在本机合成和下载，不上传，不录制视频，不自动写入文件；评价只根据闪避成绩生成，不分析长相或身份。离开、切换输入方式或重新开始时清除本局照片。未开启镜头或未拍到脸时导出明确标注无照片的成绩卡。退出或切换方向键时停止摄像头。请勿将人脸照片或包含他人的留影提交到公开仓库。
+**Do not commit downloaded portrait cards or recordings of other people to this public repository.** The included screenshot contains no face or personal camera image.
 
-摄像头识别优先在 Worker 执行；Worker 异常或超时时自动进入“兼容识别”，在同一浏览器内限频推理，无需重新授权摄像头。兼容模式可能降低流畅度；若也失败，页面会给出其具体错误及原 Worker 的错误信息。
+## Implementation and limitations
 
-## Submission
+Vite + React + TypeScript + Three.js / React Three Fiber, with MediaPipe Face Landmarker. All characters, weapons and scenery are procedural particles; no film stills or generated image assets are bundled.
 
-截止：2026-11-01 23:59 香港时间。提交本人账号下的公开 GitHub 仓库 URL；发布前完成截图、真人试用、公开链接的退出登录访问检查。当前仓库只有本地提交，尚无公开远程仓库。
+- `src/game.ts`: input gating, trial timing, shared attack boundaries and scoring.
+- `src/camera.ts`, `src/face.worker.ts`, `src/pose.ts`: local inference, fallback, lifecycle and common direction mapping.
+- `src/Scene.tsx`, `src/ParticleActors.tsx`: particle world, rider and articulated giant opponent.
+- `src/keepsake.ts`, `src/verdict.ts`: local portrait composition and score-based captions.
 
-See [PROCESS.md](PROCESS.md) and [CREDITS.md](CREDITS.md).
+Desktop-first; no audio. The character animation is procedural. Webcam quality, lighting and device speed affect tracking and responsiveness. Compatibility inference can reduce frame rate. Tests simulate input delays but do not measure real end-to-end webcam latency. Current portrait output is 1280×1000, while the underlying webcam frame may be lower resolution.
+
+## Validation and submission status
+
+The latest implementation has **38 passing automated tests** and a passing TypeScript/Vite production build. Tests cover direction mapping, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
+
+The author confirmed the keyboard practice and earlier game-image PNG download in their browser, and reported camera direction, downward-response and latency issues that informed revisions. The newest portrait keepsake still needs manual verification.
+
+**This is an initial repository upload, not a claim that every submission requirement is complete.** Still required: a current gameplay screenshot, a documented trial with at least one other person before explaining the controls, the resulting improvement/decision, and final reproduction checks on the target device. See [PROCESS.md](PROCESS.md). Credits are in [CREDITS.md](CREDITS.md).
+
+Repository: https://github.com/Kuki-Hill/WingBrone
+Assignment deadline: **1 November 2026, 23:59 Hong Kong time**.
