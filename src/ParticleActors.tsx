@@ -2,6 +2,7 @@ import { useMemo, useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as T from "three";
 import { Game, thresholds, ATTACK_TIMING } from "./game";
+import { ENEMY_SCALE, lateralCutPose, SLASH_RELEASE } from "./lateralCut";
 
 // Surface samples stay attached to their form while the shader circulates
 // them along it. No solid meshes are used by the characters or weapons.
@@ -61,6 +62,7 @@ function Cloud({
   position = [0, 0, 0],
   game,
   calm = false,
+  tint,
 }: {
   form: Form;
   count: number;
@@ -69,6 +71,7 @@ function Cloud({
   position?: [number, number, number];
   game: Game;
   calm?: boolean;
+  tint?: { current: T.Color };
 }) {
   const resources = useMemo(() => {
     const g = new T.BufferGeometry();
@@ -103,6 +106,7 @@ function Cloud({
     [resources],
   );
   useFrame(() => {
+    if (tint) resources.m.uniforms.uColor.value.copy(tint.current);
     resources.m.uniforms.uTime.value =
       game.phase === "home" ? performance.now() / 1000 : game.time;
     resources.m.uniforms.uFlow.value = calm ? 0.012 : 0.045;
@@ -252,9 +256,57 @@ export function ParticleEnemy({
     upper = useRef<T.Group>(null),
     lower = useRef<T.Group>(null),
     weapon = useRef<T.Group>(null),
-    left = useRef<T.Group>(null);
+    left = useRef<T.Group>(null),
+    leftForearm = useRef<T.Group>(null),
+    frontHand = useRef<T.Group>(null),
+    rearHand = useRef<T.Group>(null),
+    hilt = useRef<T.Group>(null);
+  const steel = useMemo(() => new T.Color("#f3c58d"), []);
+  const scarlet = useMemo(() => new T.Color("#ff1713"), []);
+  const bladeTint = useRef(steel.clone());
+  const practice = useRef({ step: -1, run: -1, start: 0 });
   const n = low ? 0.6 : 1;
   useFrame(() => {
+    const side = game.activeDirection;
+    const isSide =
+      (side === "left" || side === "right") &&
+      (game.phase === "trial" || game.phase === "tutorial");
+    for (const part of [leftForearm, frontHand, rearHand, hilt])
+      if (part.current) part.current.visible = isSide;
+    if (isSide) {
+      let time = game.cycle;
+      if (game.phase === "tutorial") {
+        if (
+          practice.current.run !== game.run ||
+          practice.current.step !== game.tutorialIndex
+        )
+          practice.current = {
+            step: game.tutorialIndex,
+            run: game.run,
+            start: game.time,
+          };
+        time = Math.min(
+          ATTACK_TIMING.cueStart,
+          game.time - practice.current.start,
+        );
+      }
+      const pose = lateralCutPose(side, time);
+      if (root.current) {
+        root.current.position.set(0, 1, pose.rootZ);
+        root.current.rotation.z = 0;
+      }
+      bone(upper.current, new T.Vector3(2.4, 4.8, 0), pose.frontElbow, 2.7);
+      bone(lower.current, pose.frontElbow, pose.frontGrip, 2.0);
+      bone(left.current, new T.Vector3(-2.4, 4.8, 0), pose.rearElbow, 2.7);
+      bone(leftForearm.current, pose.rearElbow, pose.rearGrip, 2.0);
+      frontHand.current?.position.copy(pose.frontGrip);
+      rearHand.current?.position.copy(pose.rearGrip);
+      bone(hilt.current, pose.rearGrip, pose.bladeBase, 1.1);
+      bone(weapon.current, pose.bladeBase, pose.bladeTip, 4.0);
+      bladeTint.current.copy(pose.red ? scarlet : steel);
+      return;
+    }
+    bladeTint.current.copy(steel);
     const { wind, cut, release } = motion(game);
     const strength = cut * (1 - release);
     if (root.current) {
@@ -303,7 +355,7 @@ export function ParticleEnemy({
     );
   });
   return (
-    <group ref={root} position={[0, 1, -23]}>
+    <group ref={root} position={[0, 1, -23]} scale={ENEMY_SCALE}>
       <Cloud
         game={game}
         calm={calm}
@@ -374,6 +426,31 @@ export function ParticleEnemy({
           form="blade"
           count={Math.floor(1500 * n)}
           color="#f3c58d"
+          tint={bladeTint}
+        />
+      </group>
+      <group ref={leftForearm}>
+        <Cloud game={game} form="limb" count={380 * n} color="#aacbb9" />
+      </group>
+      <group ref={hilt}>
+        <Cloud game={game} form="limb" count={220} color="#93724a" />
+      </group>
+      <group ref={frontHand}>
+        <Cloud
+          game={game}
+          form="orb"
+          count={200}
+          scale={[0.37, 0.37, 0.36]}
+          color="#d3d8bb"
+        />
+      </group>
+      <group ref={rearHand}>
+        <Cloud
+          game={game}
+          form="orb"
+          count={200}
+          scale={[0.37, 0.37, 0.36]}
+          color="#b7c6a5"
         />
       </group>
     </group>
@@ -409,12 +486,19 @@ export function ParticleSlash({ game, low }: { game: Game; low: boolean }) {
   useFrame(() => {
     if (!ref.current) return;
     const t = game.cycle;
-    ref.current.visible = game.phase === "trial" && t >= 2.75 && t < 4.3;
-    if (!ref.current.visible) return;
-    const progress = T.MathUtils.clamp((t - 2.75) / 0.75, 0, 1);
-    const dissolve = Math.max(0, (t - 3.5) / 0.8);
     const d = game.activeDirection;
     const horizontal = d === "left" || d === "right";
+    const launch = horizontal ? SLASH_RELEASE : 2.75;
+    ref.current.visible = game.phase === "trial" && t >= launch && t < 4.3;
+    if (!ref.current.visible) return;
+    const progress = T.MathUtils.clamp(
+      (t - launch) / (ATTACK_TIMING.impact - launch),
+      0,
+      1,
+    );
+    const dissolve = Math.max(0, (t - ATTACK_TIMING.impact) / 0.8);
+    const releasePose = horizontal ? lateralCutPose(d, launch) : null;
+    const origin = new T.Vector3();
     const edge = horizontal ? thresholds.horizontal : thresholds.vertical;
     const sign = d === "left" || d === "down" ? 1 : -1;
     const a = geometry.attributes.position.array as Float32Array;
@@ -424,19 +508,28 @@ export function ParticleSlash({ game, low }: { game: Game; low: boolean }) {
       const cross = (v - 0.5) * 14;
       const x = horizontal ? blocked : cross;
       const y = (horizontal ? cross : blocked) - 1;
+      // Emit from points along the raised blade in world space. At impact the
+      // cloud reaches the existing unsafe half-plane on the opposite side.
+      if (releasePose)
+        origin
+          .lerpVectors(releasePose.bladeBase, releasePose.bladeTip, u)
+          .multiplyScalar(ENEMY_SCALE);
       const curve = Math.sin(progress * Math.PI) * (w - 0.5) * 9;
       a[i * 3] =
-        T.MathUtils.lerp(sign * 5, x, progress) +
+        T.MathUtils.lerp(releasePose ? origin.x : sign * 5, x, progress) +
         curve +
         dissolve * (u - 0.5) * 5;
       a[i * 3 + 1] =
-        T.MathUtils.lerp(8, y, progress) +
+        T.MathUtils.lerp(releasePose ? origin.y + 1 : 8, y, progress) +
         Math.sin(progress * Math.PI) * 3 +
         dissolve * (v - 0.5) * 5;
       a[i * 3 + 2] =
-        -13 +
-        14 * progress -
-        (1 - progress) * w * 5 +
+        T.MathUtils.lerp(
+          releasePose ? releasePose.rootZ + origin.z : -13,
+          1,
+          progress,
+        ) -
+        (releasePose ? 0 : (1 - progress) * w * 5) +
         dissolve * (w - 0.2) * 10;
     }
     geometry.attributes.position.needsUpdate = true;

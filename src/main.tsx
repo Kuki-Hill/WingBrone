@@ -514,6 +514,10 @@ function App() {
               <b>{labels[direction]}</b>
             </div>
             <h2>{cue}</h2>
+            {game.phase === "tutorial" &&
+              (direction === "left" || direction === "right") && (
+                <p>看刀尖举向哪边，刀变红时往同一侧躲。</p>
+              )}
             {game.phase === "trial" && (
               <>
                 <div className="beat-count">{signal.count || "·"}</div>

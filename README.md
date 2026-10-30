@@ -83,11 +83,11 @@ Desktop-first; no audio. The character animation is procedural. Webcam quality, 
 
 ## Validation and submission status
 
-The latest implementation has **38 passing automated tests** and a passing TypeScript/Vite production build. Tests cover direction mapping, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
+The latest implementation has **40 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
 
 The author confirmed the keyboard practice and earlier game-image PNG download in their browser, and reported camera direction, downward-response and latency issues that informed revisions. The newest portrait keepsake still needs manual verification.
 
-**This is an initial repository upload, not a claim that every submission requirement is complete.** Still required: a current gameplay screenshot, a documented trial with at least one other person before explaining the controls, the resulting improvement/decision, and final reproduction checks on the target device. See [PROCESS.md](PROCESS.md). Credits are in [CREDITS.md](CREDITS.md).
+A classmate who studies kendo tried the game and found the dodge direction hard to read from the opponent. The left/right attacks now use a two-handed sword cue. Dodge toward the raised tip when the blade turns red. The feedback and design changes are recorded in [PROCESS.md](PROCESS.md). A current gameplay screenshot and a playtest of this revision are still pending. See [CREDITS.md](CREDITS.md) for acknowledgements.
 
 Repository: https://github.com/Kuki-Hill/WingBrone
 Assignment deadline: **1 November 2026, 23:59 Hong Kong time**.

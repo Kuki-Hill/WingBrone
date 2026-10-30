@@ -36,24 +36,17 @@ At the initial upload, 38 automated tests pass and the TypeScript/Vite productio
 
 Author feedback confirmed keyboard practice and an earlier game-scene PNG export. Camera failures, reversed controls, poor downward response and high latency were reported and led to the changes above. The included screenshot is an earlier recovery/pause screen supplied by the author, with no face image. It is not evidence that the newest visuals or portrait export have been approved.
 
-## Required other-person trial — not yet fully documented
+## Other-person trial and design response
 
-The brief requires at least one other person to try the experience **before it is explained**. That requirement cannot be marked complete from the current record. A message reported that “users found it hard to dodge”, but it did not establish the trial setup, who tried first without explanation, or the observations needed below. I will not invent those details.
+A classmate who studies kendo tried the game and reported difficulty telling which way to dodge from the opponent's movement. The feedback concerned the direction of the attack itself. A timing cue alone could not communicate it.
 
-Before final submission, record a real trial without identifying or recording the participant:
+I revised the left and right attacks first. The opponent is 12% larger. Both hands lift the sword on the body's centreline, with the forearms and grip aligned along the blade. The blade settles at 45° toward the player's safe side. It turns red one second before impact, holds that posture through the input window, then sweeps diagonally down across to the other side. The sideways practice prompts teach the same rule. The design draws on the diagonal action of 袈裟斩 and the paired directions of 正胴 and 逆胴 as a visual cue for this game.
 
-- Date and device/browser: **to record**.
-- What they did before receiving instructions: **to observe**.
-- Where they hesitated and what they thought the feedback meant: **to observe**.
-- Whether they understood the one-second warning, neutral return, pause and download: **to observe**.
-- One specific observation: **to record**.
-- The resulting code/design change, or a reasoned decision to keep it: **to complete**.
-
-Suggested trial: let them start, complete practice, play one minute and save a card. Then test denied camera permission or moving out of frame. Keep portraits and recordings out of the public repository.
+The participant has not yet evaluated this revision. Whether the controls were explained before their first attempt was not recorded.
 
 ## Remaining before final submission
 
-- Complete and document the other-person trial and its design response.
+- Confirm the initial instructions given during the trial and check whether the revised movement communicates the safe side.
 - Add a real screenshot of the current particle gameplay without camera imagery.
 - Verify the latest webcam direction, timing and portrait export on the target device.
 - Follow README setup from a fresh terminal and check the chosen interruption.
