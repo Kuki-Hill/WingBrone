@@ -1,7 +1,15 @@
 import React, { Component, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Scene, { CaptureRequest } from "./Scene";
-import { Game, HeadGate, Direction, labels, directions } from "./game";
+import {
+  Game,
+  HeadGate,
+  Direction,
+  labels,
+  directions,
+  attackCue,
+  ATTACK_TIMING,
+} from "./game";
 import { HeadCamera, Pose } from "./camera";
 import { postcard } from "./keepsake";
 import "./style.css";
@@ -292,18 +300,9 @@ function App() {
       trackerFound.current &&
       performance.now() - lastFace.current < 500);
   const direction = game.activeDirection;
+  const signal = attackCue(game.cycle);
   const cue =
-    game.phase === "tutorial"
-      ? "试着" + labels[direction]
-      : game.cycle < 1
-        ? "凝神 · 下一道剑气即将到来"
-        : game.cycle < 2
-          ? "安全缺口 · " + labels[direction]
-          : game.cycle < 2.9
-            ? "等待剑气靠近"
-            : game.cycle < 3.5
-              ? "现在闪避 · " + labels[direction]
-              : "归中 · 准备下一次";
+    game.phase === "tutorial" ? "试着" + labels[direction] : signal.text;
   return (
     <main>
       <Boundary>
@@ -438,19 +437,48 @@ function App() {
               连击 {game.combo}　最高 {game.best}
             </small>
           </aside>
-          <section className="cue">
-            <span>{game.phase === "tutorial" ? "循风习剑" : "听风辨势"}</span>
+          <section
+            className={`cue ${game.phase === "trial" ? signal.stage : "practice"}`}
+          >
+            <span>
+              {game.phase === "tutorial"
+                ? "循风习剑 / PRACTICE"
+                : "山鬼 · 蓄势挥斩"}
+            </span>
+            <div className="direction-signal">
+              <strong>
+                {{ left: "←", right: "→", up: "↑", down: "↓" }[direction]}
+              </strong>
+              <b>{labels[direction]}</b>
+            </div>
             <h2>{cue}</h2>
-            {game.phase === "trial" && game.cycle >= 2 && game.cycle < 3.5 && (
-              <div className="timing">
-                <b style={{ width: `${((game.cycle - 2) / 1.5) * 100}%` }} />
-              </div>
+            {game.phase === "trial" && (
+              <>
+                <div className="beat-count">{signal.count || "·"}</div>
+                <div className="timing">
+                  <span
+                    className="safe-window"
+                    style={{
+                      left: `${(ATTACK_TIMING.cueStart / ATTACK_TIMING.impact) * 100}%`,
+                      width: `${((ATTACK_TIMING.cueEnd - ATTACK_TIMING.cueStart) / ATTACK_TIMING.impact) * 100}%`,
+                    }}
+                  />
+                  <b
+                    style={{
+                      width: `${Math.min(1, game.cycle / ATTACK_TIMING.impact) * 100}%`,
+                    }}
+                  />
+                </div>
+                <small className="timing-legend">
+                  蓄力 ── 等待 ── <em>绿色区闪避</em>
+                </small>
+              </>
             )}
             <p>
               {mode === "keyboard"
                 ? "方向键 ↑ ↓ ← →"
                 : "抬头 / 低头 / 左转 / 右转"}{" "}
-              · 闪避后回正
+              · 每次动作后回正
             </p>
           </section>
           {game.last && game.time - game.last.time < 1 && (

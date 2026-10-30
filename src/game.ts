@@ -13,6 +13,21 @@ export const vectors: Record<Direction, [number, number]> = {
   down: [0, -2.2],
 };
 export const thresholds = { horizontal: 1.6, vertical: 1.4 };
+export const ATTACK_TIMING = { impact: 3.5, cueStart: 2.85, cueEnd: 3.15 };
+export function attackCue(cycle: number) {
+  if (cycle < 1) return { stage: "rest", text: "凝神 · 等待蓄力", count: "" };
+  if (cycle < ATTACK_TIMING.cueStart)
+    return {
+      stage: "prepare",
+      text: "准备方向 · 等绿色提示",
+      count: String(Math.ceil((ATTACK_TIMING.cueStart - cycle) / 0.63334)),
+    };
+  if (cycle <= ATTACK_TIMING.cueEnd)
+    return { stage: "dodge", text: "现在闪避", count: "GO" };
+  if (cycle < ATTACK_TIMING.impact)
+    return { stage: "impact", text: "挥砍落下", count: "" };
+  return { stage: "recover", text: "回到正视 · 准备下一次", count: "" };
+}
 export function safeAt(d: Direction, x: number, y: number) {
   return d === "left"
     ? x < -thresholds.horizontal
@@ -153,7 +168,7 @@ export class Game {
       return;
     }
     for (let i = this.resolved + 1; i < 12; i++) {
-      const event = i * 5 + 3.5;
+      const event = i * 5 + ATTACK_TIMING.impact;
       if (event > next) break;
       const [x, y] = this.positionAt(event);
       const d = this.attacks[i];

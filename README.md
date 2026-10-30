@@ -4,6 +4,8 @@ An independent body-controlled browser experience for Assignment 3.
 
 你是一名背对镜头、戴草帽的御剑者。通过小幅抬头、低头、左右转头，在不断生成的粒子竹海中躲避十二道剑气，结束时带走一张真正来自游戏画面的 PNG 纪念图。
 
+当前视觉版本采用黑色背景，角色、草帽、剑与巨型敌人全部由流动粒子组成。敌人蓄力后挥砍；按左下角方向箭头准备，等待 3-2-1 后的绿色“现在闪避 / GO”，动作后回正。
+
 ## Run
 
 使用 Node.js 22.12+（本项目在 Node 24 测试）和桌面 Chrome / Edge：

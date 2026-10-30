@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as T from "three";
-import { Game, vectors, attackStrip } from "./game";
+import { Game } from "./game";
+import { ParticleHero, ParticleEnemy, ParticleSlash } from "./ParticleActors";
 export type CaptureRequest = {
   key: string;
   done: (canvas: HTMLCanvasElement) => void;
@@ -27,8 +28,9 @@ function Particles({
         transparent: true,
         depthWrite: false,
         vertexColors: true,
+        blending: T.AdditiveBlending,
         uniforms: { clock: { value: 0 }, motion: { value: 1 } },
-        vertexShader: `attribute float size; attribute float kind; uniform float clock; uniform float motion; varying vec3 c; varying float a; void main(){vec3 p=position; p.z=mod(p.z+clock*7.0*motion+100.0,180.0)-110.0; p.x+=sin(clock*.25+p.y)*.25;vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv;gl_PointSize=clamp(size*100./max(1.,-mv.z),1.,10.); c=color;a=smoothstep(0.,15.,-mv.z)*(1.-smoothstep(70.,115.,-mv.z));}`,
+        vertexShader: `attribute float size; attribute float kind; uniform float clock; uniform float motion; varying vec3 c; varying float a; void main(){vec3 p=position; p.z=mod(p.z+clock*7.0*motion+100.0,180.0)-110.0; p.x+=sin(clock*.35+p.y*.7+p.z*.08)*.65; p.y+=cos(clock*.28+p.x*.4)*.25;vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv;gl_PointSize=clamp(size*100./max(1.,-mv.z),1.,5.); c=color;a=smoothstep(0.,15.,-mv.z)*(1.-smoothstep(70.,115.,-mv.z));}`,
         fragmentShader: `varying vec3 c;varying float a;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(c,a*(1.-smoothstep(.3,.5,d))*.8);}`,
       }),
     [],
@@ -52,14 +54,14 @@ function Particles({
       s.push(size);
       k.push(0);
     };
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 4500; i++) {
       const z = random() * 180 - 110;
       const side = random() > 0.5 ? 1 : -1;
       const x = side * (8 + random() * 32);
       const y = -5 + random() * 3 + Math.sin(z * 0.07 + x * 0.05) * 4;
       add(x, y, z, 0.5 + random(), ["#526c53", "#82936a", "#a4b489"][i % 3]);
     }
-    for (let i = 0; i < 85; i++) {
+    for (let i = 0; i < 48; i++) {
       const z = random() * 180 - 110;
       const x = (random() > 0.5 ? 1 : -1) * (8 + random() * 24);
       const h = 7 + random() * 17;
@@ -103,147 +105,9 @@ function Particles({
     mat.uniforms.clock.value =
       game.phase === "home" ? (performance.now() / 1000) * 0.3 : game.time;
     mat.uniforms.motion.value = calm ? 0.3 : 1;
-    geometry.setDrawRange(0, low ? 9000 : geometry.attributes.position.count);
+    geometry.setDrawRange(0, low ? 7500 : geometry.attributes.position.count);
   });
   return <points geometry={geometry} material={mat} frustumCulled={false} />;
-}
-function Hero({ game, calm }: { game: Game; calm: boolean }) {
-  const ref = useRef<T.Group>(null);
-  useFrame(() => {
-    if (!ref.current) return;
-    const [x, y] = game.position;
-    ref.current.position.set(x, y - 1, 1);
-    ref.current.rotation.z = calm ? 0 : -x * 0.075;
-    ref.current.rotation.y = Math.sin(game.time) * 0.025;
-  });
-  return (
-    <group ref={ref}>
-      <mesh position={[0, 1.5, 0]}>
-        <sphereGeometry args={[0.29, 16, 12]} />
-        <meshStandardMaterial color="#a7b19a" />
-      </mesh>
-      <mesh position={[0, 1.83, 0]}>
-        <coneGeometry args={[0.92, 0.35, 40]} />
-        <meshStandardMaterial color="#b9b18b" roughness={1} />
-      </mesh>
-      <mesh position={[0, 0.56, 0]}>
-        <coneGeometry args={[0.65, 1.6, 8]} />
-        <meshStandardMaterial color="#435e54" flatShading side={T.DoubleSide} />
-      </mesh>
-      <mesh position={[-0.5, 0.7, 0.05]} rotation={[0, 0, -0.45]}>
-        <capsuleGeometry args={[0.15, 0.65, 4, 8]} />
-        <meshStandardMaterial color="#788c77" />
-      </mesh>
-      <mesh position={[0.5, 0.7, 0.05]} rotation={[0, 0, 0.45]}>
-        <capsuleGeometry args={[0.15, 0.65, 4, 8]} />
-        <meshStandardMaterial color="#788c77" />
-      </mesh>
-      {[-0.24, 0.24].map((x) => (
-        <mesh key={x} position={[x, -0.43, 0]}>
-          <capsuleGeometry args={[0.12, 0.5, 4, 8]} />
-          <meshStandardMaterial color="#344c45" />
-        </mesh>
-      ))}
-      <mesh position={[0, -0.84, -0.65]} rotation={[-Math.PI / 2, 0, 0]}>
-        <boxGeometry args={[0.25, 4, 0.055]} />
-        <meshStandardMaterial
-          color="#d9e2cf"
-          metalness={0.45}
-          roughness={0.35}
-        />
-      </mesh>
-      <mesh position={[0, -0.8, 1.1]}>
-        <boxGeometry args={[0.7, 0.08, 0.11]} />
-        <meshStandardMaterial color="#b3ad84" />
-      </mesh>
-      {[0, 1, 2].map((i) => (
-        <mesh
-          key={i}
-          position={[(i - 1) * 0.09, -0.84, 4 + i * 0.7]}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <planeGeometry args={[0.03, 4]} />
-          <meshBasicMaterial
-            color="#dbe5b8"
-            transparent
-            opacity={0.3 - i * 0.07}
-            side={T.DoubleSide}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-function Attack({ game }: { game: Game }) {
-  const ref = useRef<T.Group>(null);
-  const sparks = useRef<T.Points>(null);
-  const data = useMemo(() => {
-    const a = new Float32Array(500 * 3);
-    for (let i = 0; i < a.length; i++) a[i] = (random() - 0.5) * 14;
-    return a;
-  }, []);
-  useFrame(() => {
-    if (!ref.current) return;
-    const active = game.phase === "trial";
-    const t = game.cycle;
-    ref.current.visible = active && t > 1 && t < 4.35;
-    ref.current.position.z =
-      t < 2 ? -31 : -31 + Math.min(1, (t - 2) / 1.5) * 32;
-    ref.current.rotation.z = 0;
-    if (sparks.current) {
-      sparks.current.visible = !!game.last && game.time - game.last.time < 0.7;
-      sparks.current.position.z = 1;
-      sparks.current.rotation.z = game.time * 0.2;
-    }
-  });
-  const d = game.activeDirection;
-  const v = vectors[d] ?? [0, 0];
-  return (
-    <>
-      <group ref={ref}>
-        {Array.from({ length: 17 }, (_, i) => {
-          const strip = attackStrip(d, i);
-          return (
-            <mesh key={i} position={strip.position}>
-              <boxGeometry args={strip.size} />
-              <meshBasicMaterial color="#c6a071" transparent opacity={0.5} />
-            </mesh>
-          );
-        })}
-        <mesh position={[v[0], v[1] - 1, 0]}>
-          <ringGeometry args={[0.7, 0.74, 40]} />
-          <meshBasicMaterial
-            color="#eef0cd"
-            transparent
-            opacity={0.6}
-            side={T.DoubleSide}
-          />
-        </mesh>
-      </group>
-      <points ref={sparks}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[data, 3]} />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.055}
-          color="#ddc298"
-          transparent
-          opacity={0.65}
-          depthWrite={false}
-        />
-      </points>
-      <group position={[0, 0.8, -36]} scale={1.4}>
-        <mesh>
-          <coneGeometry args={[0.7, 2.3, 8]} />
-          <meshBasicMaterial color="#788a72" wireframe />
-        </mesh>
-        <mesh position={[0, 1.5, 0]}>
-          <sphereGeometry args={[0.3, 8, 6]} />
-          <meshBasicMaterial color="#9dba91" wireframe />
-        </mesh>
-      </group>
-    </>
-  );
 }
 function World({
   game,
@@ -268,7 +132,7 @@ function World({
       calm ? 0 : p[0] * 0.1,
       0.08,
     );
-    camera.lookAt(0, 1, -25);
+    camera.lookAt(0, 1.5, -23);
     if (capture && capture.key !== handled.current) {
       handled.current = capture.key;
       const target = new T.WebGLRenderTarget(1280, 720);
@@ -303,8 +167,8 @@ function World({
   });
   return (
     <>
-      <color attach="background" args={["#dce3d4"]} />
-      <fog attach="fog" args={["#dce3d4", 24, 110]} />
+      <color attach="background" args={["#030707"]} />
+      <fog attach="fog" args={["#030707", 24, 110]} />
       <ambientLight intensity={2} />
       <directionalLight
         position={[-10, 18, 10]}
@@ -312,8 +176,9 @@ function World({
         color="#f5f0d4"
       />
       <Particles game={game} low={low} calm={calm} />
-      <Hero game={game} calm={calm} />
-      <Attack game={game} />
+      <ParticleHero game={game} calm={calm} low={low} />
+      <ParticleEnemy game={game} calm={calm} low={low} />
+      <ParticleSlash game={game} low={low} />
     </>
   );
 }

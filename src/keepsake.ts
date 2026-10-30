@@ -9,9 +9,9 @@ export async function postcard(
   const x = c.getContext("2d");
   if (!x) throw Error("图片合成不可用");
   x.drawImage(frame, 0, 0);
-  x.fillStyle = "#e9ecdf";
+  x.fillStyle = "#07110f";
   x.fillRect(0, 720, 1280, 160);
-  x.fillStyle = "#344d43";
+  x.fillStyle = "#cfdfc4";
   x.font = "36px Georgia, serif";
   x.fillText("御风 / WINDBORNE", 48, 780);
   x.font = "18px sans-serif";

@@ -6,8 +6,36 @@ import {
   directions,
   safeAt,
   attackStrip,
+  ATTACK_TIMING,
+  attackCue,
 } from "../src/game";
 describe("trial", () => {
+  it("the entire green window allows a successful dodge including 150ms input latency", () => {
+    for (const d of directions)
+      for (const latency of [0, 0.15])
+        for (
+          let t = ATTACK_TIMING.cueStart;
+          t <= ATTACK_TIMING.cueEnd + 0.00001;
+          t += 0.01
+        ) {
+          const g = new Game();
+          g.start();
+          g.phase = "trial";
+          g.attacks[0] = d;
+          g.time = t + latency;
+          g.trigger(d);
+          g.tick(ATTACK_TIMING.impact - g.time + 0.001);
+          expect(g.hits, `${d} at ${t} + ${latency}`).toBe(1);
+        }
+  });
+  it("separates countdown, dodge window, and impact feedback", () => {
+    expect(attackCue(1.1).count).toBe("3");
+    expect(attackCue(1.8).count).toBe("2");
+    expect(attackCue(2.5).count).toBe("1");
+    expect(attackCue(3).stage).toBe("dodge");
+    expect(attackCue(3.4).stage).toBe("impact");
+    expect(attackCue(3.6).stage).toBe("recover");
+  });
   it("balances directions and avoids triples", () => {
     const a = sequence();
     expect(a).toHaveLength(12);
