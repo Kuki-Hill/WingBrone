@@ -13,8 +13,11 @@ export function poseFromResult(
   return {
     found: true,
     duration,
-    yaw: (Math.atan2(m[8], m[10]) * 180) / Math.PI,
-    pitch: (Math.atan2(-m[9], Math.hypot(m[8], m[10])) * 180) / Math.PI,
+    // Convert the camera-facing transform into the player's directions:
+    // positive yaw = player turns right; positive pitch = player looks up.
+    // The mirrored preview is presentation only and must not change input.
+    yaw: (-Math.atan2(m[8], m[10]) * 180) / Math.PI,
+    pitch: (Math.atan2(m[9], Math.hypot(m[8], m[10])) * 180) / Math.PI,
     box: {
       x: Math.min(...xs),
       y: Math.min(...ys),
