@@ -1,6 +1,6 @@
 import React, { Component, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import Scene, { CaptureRequest } from "./Scene";
+import Scene from "./Scene";
 import {
   Game,
   HeadGate,
@@ -14,6 +14,7 @@ import { HeadCamera, Pose } from "./camera";
 import { TrackingHealth } from "./tracking";
 import { CameraPreview } from "./CameraPreview";
 import { postcard } from "./keepsake";
+import { verdict } from "./verdict";
 import "./style.css";
 class Boundary extends Component<
   { children: React.ReactNode },
@@ -45,7 +46,6 @@ function App() {
   const [low, setLow] = useState(false);
   const [calm, setCalm] = useState(false);
   const [sensitivity, setSensitivity] = useState(1);
-  const [capture, setCapture] = useState<CaptureRequest | null>(null);
   const [photo, setPhoto] = useState("");
   const [photoError, setPhotoError] = useState("");
   const camera = useRef<HeadCamera | null>(null);
@@ -78,7 +78,6 @@ function App() {
     bestFrame.current = null;
     scheduled.current = "";
     finalizing.current = -1;
-    setCapture(null);
   }
   function start() {
     resetPhoto();
@@ -87,6 +86,7 @@ function App() {
     update();
   }
   function stopCamera() {
+    resetPhoto();
     lastHeadAction.current = null;
     poseState.current = { yaw: 0, pitch: 0 };
     camera.current?.stop();
@@ -196,7 +196,11 @@ function App() {
       device.current,
     );
   }
-  async function finish(canvas: HTMLCanvasElement, combo: number, run: number) {
+  async function finish(
+    canvas: HTMLCanvasElement | null,
+    combo: number,
+    run: number,
+  ) {
     try {
       const blob = await postcard(canvas, {
         combo,
@@ -213,19 +217,27 @@ function App() {
       if (game.run === run) setPhotoError("留影暂未生成，点击重试。");
     }
   }
-  function requestFrame(key: string, done: (c: HTMLCanvasElement) => void) {
-    setCapture({
-      key,
-      done,
-      fail: () => setPhotoError("画面捕获失败，可以重试；成绩已保留。"),
-    });
+  function capturePortrait(): HTMLCanvasElement | null {
+    if (
+      mode !== "camera" ||
+      health.current.state(performance.now()) !== "tracking"
+    )
+      return null;
+    try {
+      return camera.current?.snapshot() ?? null;
+    } catch {
+      return null;
+    }
   }
   function retryPhoto() {
     const run = game.run;
     if (bestFrame.current)
       void finish(bestFrame.current.canvas, bestFrame.current.combo, run);
-    else
-      requestFrame(`${run}-retry-${Date.now()}`, (c) => void finish(c, 0, run));
+    else {
+      const frame = capturePortrait();
+      if (frame) bestFrame.current = { canvas: frame, combo: 0 };
+      void finish(frame, 0, run);
+    }
   }
   useEffect(() => {
     let raf = 0;
@@ -248,16 +260,16 @@ function App() {
         );
       }
       game.tick(dt);
-      if (game.capture && game.time >= game.capture.time + 0.1) {
-        const outcome = game.capture;
+      if (!game.paused && game.last && game.time >= game.last.time + 0.1) {
+        const outcome = game.last;
         const key = `${game.run}-${outcome.index}`;
         if (scheduled.current !== key) {
           scheduled.current = key;
-          const run = game.run;
-          requestFrame(key, (c) => {
-            if (game.run === run)
-              bestFrame.current = { canvas: c, combo: outcome.combo };
-          });
+          if (!bestFrame.current || outcome.combo >= bestFrame.current.combo) {
+            const frame = capturePortrait();
+            if (frame)
+              bestFrame.current = { canvas: frame, combo: outcome.combo };
+          }
         }
       }
       if (game.phase === "results" && finalizing.current !== game.run) {
@@ -265,13 +277,11 @@ function App() {
         const run = game.run;
         if (bestFrame.current)
           void finish(bestFrame.current.canvas, bestFrame.current.combo, run);
-        else
-          requestFrame(`${run}-final`, (c) => {
-            if (game.run === run) {
-              bestFrame.current = { canvas: c, combo: 0 };
-              void finish(c, 0, run);
-            }
-          });
+        else {
+          const frame = capturePortrait();
+          if (frame) bestFrame.current = { canvas: frame, combo: 0 };
+          void finish(frame, 0, run);
+        }
       }
       if (now - ui > 50) {
         update();
@@ -348,7 +358,7 @@ function App() {
           game={game}
           low={low}
           calm={calm}
-          capture={capture}
+          capture={null}
           onReady={() => setReady(true)}
         />
       </Boundary>
@@ -464,7 +474,7 @@ function App() {
           <small>
             四次练习 · 一分钟试炼 · 自动精彩留影
             <br />
-            摄像头仅在本机处理，不录制、不上传。
+            摄像头用于体感和精彩瞬间人脸抓拍；照片仅在本机合成，不上传。
           </small>
         </section>
       )}
@@ -606,7 +616,9 @@ function App() {
         <section className="overlay results">
           <div className="result-heading">
             <div className="eyebrow">YOUR MOMENT IN THE WIND</div>
-            <h1>御风留影</h1>
+            <h1>江湖黑历史存档</h1>
+            <h2 className="roast-title">{verdict(game.hits).title}</h2>
+            <p>{verdict(game.hits).line}</p>
             <p>
               避开 {game.hits} / 12 · 成功率{" "}
               {Math.round((game.hits / 12) * 100)}% · 最高连击 {game.best}
@@ -614,9 +626,12 @@ function App() {
           </div>
           <div className="postcard">
             {photo ? (
-              <img src={photo} alt="本局游戏画面与成绩组成的御风纪念图" />
+              <img
+                src={photo}
+                alt="本机人脸抓拍、闪避成绩和江湖吐槽评价组成的留念卡"
+              />
             ) : (
-              <p>{photoError || "正在将风的轨迹收进画面…"}</p>
+              <p>{photoError || "正在整理你的江湖黑历史…"}</p>
             )}
           </div>
           <div className="result-actions">

@@ -215,6 +215,25 @@ export class HeadCamera {
       }
     }
   }
+  snapshot(): HTMLCanvasElement {
+    if (
+      this.disposed ||
+      !this.stream ||
+      this.video.readyState < 2 ||
+      !this.video.videoWidth
+    )
+      throw new Error("摄像头暂时没有可拍摄的画面");
+    const canvas = document.createElement("canvas");
+    canvas.width = this.video.videoWidth;
+    canvas.height = this.video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("无法读取照片画布");
+    // Match the mirror shown in the local preview; do not alter pose input.
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(this.video, 0, 0);
+    return canvas;
+  }
   stop() {
     this.disposed = true;
     clearTimeout(this.startupTimer);

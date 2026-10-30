@@ -22,6 +22,20 @@ class FakeWorker {
   }
 }
 describe("camera compatibility recovery", () => {
+  it("captures a mirrored camera frame locally and rejects capture after stop", async () => {
+    const c = new HeadCamera();
+    await c.start(vi.fn(), vi.fn(), vi.fn());
+    Object.assign(c.video, { videoWidth: 384, videoHeight: 288 });
+    const ctx = { translate: vi.fn(), scale: vi.fn(), drawImage: vi.fn() };
+    const canvas = { width: 0, height: 0, getContext: () => ctx };
+    vi.stubGlobal("document", { createElement: () => canvas });
+    expect(c.snapshot()).toBe(canvas);
+    expect(ctx.translate).toHaveBeenCalledWith(384, 0);
+    expect(ctx.scale).toHaveBeenCalledWith(-1, 1);
+    expect(ctx.drawImage).toHaveBeenCalledWith(c.video, 0, 0);
+    c.stop();
+    expect(() => c.snapshot()).toThrow("摄像头暂时没有可拍摄的画面");
+  });
   let stop: ReturnType<typeof vi.fn>;
   beforeEach(() => {
     vi.useFakeTimers();
