@@ -11,6 +11,8 @@ import {
   ATTACK_TIMING,
 } from "./game";
 import { HeadCamera, Pose } from "./camera";
+import { TrackingHealth } from "./tracking";
+import { CameraPreview } from "./CameraPreview";
 import { postcard } from "./keepsake";
 import "./style.css";
 class Boundary extends Component<
@@ -50,7 +52,6 @@ function App() {
   const gate = useRef(new HeadGate());
   const baseline = useRef<{ yaw: number; pitch: number } | null>(null);
   const samples = useRef<Pose[]>([]);
-  const lastFace = useRef(0);
   const poseState = useRef({ yaw: 0, pitch: 0 });
   const sensitivityRef = useRef(1);
   sensitivityRef.current = sensitivity;
@@ -60,7 +61,9 @@ function App() {
   const scheduled = useRef("");
   const finalizing = useRef(-1);
   const photoRef = useRef("");
-  const trackerFound = useRef(false);
+  const health = useRef(new TrackingHealth());
+  const [latestPose, setLatestPose] = useState<Pose | null>(null);
+  const device = useRef<string | undefined>(undefined);
   const update = () => redraw((n) => n + 1);
   function resetPhoto() {
     if (photoRef.current) URL.revokeObjectURL(photoRef.current);
@@ -83,7 +86,8 @@ function App() {
     camera.current = null;
     baseline.current = null;
     samples.current = [];
-    trackerFound.current = false;
+    health.current.reset(performance.now());
+    setLatestPose(null);
     setCalibrated(false);
   }
   function keyboard() {
@@ -103,12 +107,15 @@ function App() {
     update();
   }
   function onPose(p: Pose) {
+    health.current.receive(p.found, performance.now(), p.duration);
+    setLatestPose(p);
     if (!p.found) {
-      trackerFound.current = false;
+      if (!baseline.current) {
+        samples.current = [];
+        setStatus("未看到完整人脸，请检查右上角镜头预览");
+      }
       return;
     }
-    trackerFound.current = true;
-    lastFace.current = performance.now();
     if (!baseline.current) {
       samples.current.push(p);
       setStatus(
@@ -133,6 +140,9 @@ function App() {
       }
       return;
     }
+    setStatus(
+      game.paused ? "已重新识别到人脸 · 可以继续" : "识别就绪 · 小幅转头即可",
+    );
     const b = baseline.current;
     poseState.current.yaw += (p.yaw - b.yaw - poseState.current.yaw) * 0.45;
     poseState.current.pitch +=
@@ -145,19 +155,30 @@ function App() {
     );
     if (d) game.trigger(d);
   }
-  function enableCamera() {
+  function enableCamera(selectedDevice?: string) {
+    if (selectedDevice) device.current = selectedDevice;
     stopCamera();
     setMode("camera");
     setError("");
     const c = new HeadCamera();
     camera.current = c;
-    lastFace.current = performance.now();
-    void c.start(onPose, setStatus, (e) => {
-      setError(e);
-      setStatus("摄像头不可用");
-      game.paused = true;
-      update();
-    });
+    health.current.reset(performance.now());
+    void c.start(
+      (p) => {
+        if (camera.current === c) onPose(p);
+      },
+      (s) => {
+        if (camera.current === c) setStatus(s);
+      },
+      (e) => {
+        if (camera.current !== c) return;
+        setError(e);
+        setStatus("摄像头不可用");
+        game.paused = true;
+        update();
+      },
+      device.current,
+    );
   }
   async function finish(canvas: HTMLCanvasElement, combo: number, run: number) {
     try {
@@ -200,11 +221,15 @@ function App() {
       if (
         mode === "camera" &&
         baseline.current &&
-        now - lastFace.current > 500 &&
+        ["missing", "stalled"].includes(health.current.state(now)) &&
         ["trial", "tutorial"].includes(game.phase)
       ) {
         game.paused = true;
-        setStatus("未识别到人脸 · 已暂停");
+        setStatus(
+          health.current.state(now) === "stalled"
+            ? "识别处理暂时无响应 · 请重启摄像头"
+            : "人脸暂时离开画面 · 已暂停",
+        );
       }
       game.tick(dt);
       if (game.capture && game.time >= game.capture.time + 0.1) {
@@ -250,8 +275,7 @@ function App() {
             game.paused &&
             mode === "camera" &&
             (!baseline.current ||
-              !trackerFound.current ||
-              performance.now() - lastFace.current > 500)
+              health.current.state(performance.now()) !== "tracking")
           )
             return;
           game.paused = !game.paused;
@@ -296,9 +320,7 @@ function App() {
   const playing = game.phase === "trial" || game.phase === "tutorial";
   const canContinue =
     mode === "keyboard" ||
-    (calibrated &&
-      trackerFound.current &&
-      performance.now() - lastFace.current < 500);
+    (calibrated && health.current.state(performance.now()) === "tracking");
   const direction = game.activeDirection;
   const signal = attackCue(game.cycle);
   const cue =
@@ -315,6 +337,16 @@ function App() {
         />
       </Boundary>
       <div className="vignette" />
+      {mode === "camera" && (
+        <CameraPreview
+          camera={camera.current}
+          pose={latestPose}
+          status={status}
+          expanded={game.phase === "home" || game.paused}
+          onDevice={(id) => enableCamera(id)}
+          onRestart={() => enableCamera()}
+        />
+      )}
       <header>
         <a
           className="brand"
@@ -374,7 +406,7 @@ function App() {
           <div className="mode">
             <button
               className={mode === "camera" ? "selected" : ""}
-              onClick={enableCamera}
+              onClick={() => enableCamera()}
             >
               ◉ 摄像头体感
             </button>

@@ -1,4 +1,10 @@
-export type Pose = { found: boolean; yaw: number; pitch: number };
+export type Pose = {
+  found: boolean;
+  yaw: number;
+  pitch: number;
+  duration?: number;
+  box?: { x: number; y: number; width: number; height: number };
+};
 export class HeadCamera {
   worker: Worker | null = null;
   stream: MediaStream | null = null;
@@ -6,15 +12,25 @@ export class HeadCamera {
   timer = 0;
   busy = false;
   disposed = false;
+  private reportError: (message: string) => void = () => {};
+  private frameFailures = 0;
   async start(
     onPose: (p: Pose) => void,
     onStatus: (s: string) => void,
     onError: (e: string) => void,
+    deviceId?: string,
   ) {
+    this.reportError = onError;
     try {
       onStatus("正在申请摄像头…");
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: "user" },
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          ...(deviceId
+            ? { deviceId: { exact: deviceId } }
+            : { facingMode: "user" }),
+        },
         audio: false,
       });
       if (this.disposed) {
@@ -30,8 +46,12 @@ export class HeadCamera {
       this.worker = new Worker(new URL("./face.worker.ts", import.meta.url), {
         type: "module",
       });
-      this.worker.onerror = () => onError("识别模块启动失败，可切换键盘继续。");
+      this.worker.onerror = (e) => {
+        if (!this.disposed)
+          onError(`识别模块异常：${e.message || "Worker 无响应"}`);
+      };
       this.worker.onmessage = (e) => {
+        if (this.disposed) return;
         this.busy = false;
         if (e.data.type === "ready") {
           onStatus("请正视屏幕，保持约两秒");
@@ -61,8 +81,10 @@ export class HeadCamera {
         { type: "frame", image, time: performance.now() },
         [image],
       );
-    } catch {
+    } catch (err) {
       this.busy = false;
+      if (!this.disposed && ++this.frameFailures === 3)
+        this.reportError(`摄像头画面读取失败：${String(err)}`);
     }
   }
   stop() {

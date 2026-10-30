@@ -368,6 +368,86 @@ footer {
 }
 
 /* Night particle study: UI stays readable without covering the opponent. */
+.camera-preview {
+  position: absolute;
+  right: 28px;
+  top: 100px;
+  width: 246px;
+  z-index: 8;
+  background: #07110ff0;
+  border: 1px solid #739b7966;
+  padding: 12px;
+  font: 12px/1.6 sans-serif;
+  color: #c8dfcc;
+  border-radius: 5px;
+}
+.camera-preview-toggle {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font: 12px sans-serif;
+}
+.camera-image {
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  background: #000;
+  width: 220px;
+  transition: none;
+}
+.camera-image video {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  transform: scaleX(-1);
+  display: block;
+}
+.face-box {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid #b5f2a9;
+  pointer-events: none;
+}
+.camera-preview p {
+  font: 12px/1.6 sans-serif;
+  margin: 8px 0;
+  color: #c8dfcc;
+}
+.camera-preview small {
+  display: block;
+  color: #96ab9d;
+  font: 10px/1.6 sans-serif;
+}
+.camera-preview label {
+  display: block;
+  margin: 8px 0;
+}
+.camera-preview select {
+  display: block;
+  width: 100%;
+  background: #17281f;
+  color: #d3e2cc;
+  padding: 5px;
+  border: 1px solid #6d8e7366;
+}
+.camera-preview > button:not(:first-child) {
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.camera-preview.compact {
+  width: 210px;
+}
+@media (max-width: 760px) {
+  .camera-preview {
+    top: 80px;
+    right: 10px;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+}
 :root {
   color: #d5e5d6;
   background: #030707;
