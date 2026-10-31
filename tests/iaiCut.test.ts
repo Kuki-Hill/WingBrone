@@ -59,6 +59,24 @@ describe("flank draw and variable tempo", () => {
       expect(slot.impact - slot.bladeStart).toBeLessThan(0.131);
     });
   });
+  it("raises or lowers the entire opponent at the start before the red cue or flank rush", () => {
+    for (const flank of [-1, 1]) {
+      const neutral = iaiCutPose("down", flank, 0).root.y;
+      const highEarly = iaiCutPose("down", flank, 0.55),
+        lowEarly = iaiCutPose("up", flank, 0.55);
+      const highReady = iaiCutPose("down", flank, 1),
+        lowReady = iaiCutPose("up", flank, 1);
+      expect(highEarly.root.y).toBeGreaterThan(neutral);
+      expect(lowEarly.root.y).toBeLessThan(neutral);
+      expect(highReady.root.y - highEarly.root.y).toBeGreaterThan(0);
+      expect(lowReady.root.y - lowEarly.root.y).toBeLessThan(0);
+      expect(highReady.root.y - lowReady.root.y).toBeCloseTo(2);
+      expect(highReady.root.x).toBeCloseTo(0);
+      expect(lowReady.root.x).toBeCloseTo(0);
+      expect(highReady.red).toBe(false);
+      expect(lowReady.red).toBe(false);
+    }
+  });
   it("accelerates late attacks and keeps red, swing and impact aligned across the trial", () => {
     const game = new Game();
     game.start();

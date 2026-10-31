@@ -46,6 +46,12 @@ A further revision raises both hands above the crown into a high guard. A pale b
 
 ## Remaining before final submission
 
+### Follow-up feedback on early height cues and gaze concentration
+
+The author reported that the high and low attacks were still difficult to distinguish. The opponent now moves its entire body upward or downward by one world unit during the opening preparation, before the red cue and rush. This makes the height difference visible earlier while keeping the same high-attack/duck and low-attack/rise mapping.
+
+A second test user suggested centering the timing bar, preferably above the rider, because looking away to the side made it harder to concentrate on the character. I moved the trial timing bar and its short direction/status cue to the horizontal centre above the neutral rider. The green hit window remains visible there. The practice instructions stay in their own panel. These changes respond to the reported observations; a repeat trial of this revision is pending.
+
 - Confirm the initial instructions given during the trial and check whether the revised movement communicates the safe side.
 - Add a real screenshot of the current particle gameplay without camera imagery.
 - Verify the latest webcam direction, timing and portrait export on the target device.

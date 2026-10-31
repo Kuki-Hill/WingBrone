@@ -499,60 +499,62 @@ function App() {
               连击 {game.combo}　最高 {game.best}
             </small>
           </aside>
-          <section
-            className={`cue ${game.phase === "trial" ? signal.stage : "practice"}`}
-          >
-            <span>
-              {game.phase === "tutorial"
-                ? "循风习剑 / PRACTICE"
-                : "山鬼 · 蓄势挥斩"}
-            </span>
-            <div className="direction-signal">
-              <strong>
-                {{ left: "←", right: "→", up: "↑", down: "↓" }[direction]}
-              </strong>
-              <b>{labels[direction]}</b>
-            </div>
-            <h2>{cue}</h2>
-            {game.phase === "tutorial" &&
-              (direction === "up" || direction === "down") && (
-                <p>看敌人的高度：高位横斩低头躲，低位横斩抬头躲。</p>
-              )}
-            {game.phase === "tutorial" &&
-              (direction === "left" || direction === "right") && (
-                <p>看刀尖举向哪边，刀变红时往同一侧躲。</p>
-              )}
-            {game.phase === "trial" && (
-              <>
-                {signal.stage === "dodge" && (
-                  <div className="beat-count">GO</div>
-                )}
-                <div className="timing">
-                  <span
-                    className="safe-window"
-                    style={{
-                      left: `${(ATTACK_TIMING.cueStart / ATTACK_TIMING.impact) * 100}%`,
-                      width: `${((ATTACK_TIMING.cueEnd - ATTACK_TIMING.cueStart) / ATTACK_TIMING.impact) * 100}%`,
-                    }}
-                  />
-                  <b
-                    style={{
-                      width: `${Math.min(1, game.cycle / ATTACK_TIMING.impact) * 100}%`,
-                    }}
-                  />
-                </div>
-                <small className="timing-legend">
-                  蓄力 ── 等待 ── <em>绿色区闪避</em>
-                </small>
-              </>
-            )}
-            <p>
-              {mode === "keyboard"
-                ? "方向键 ↑ ↓ ← →"
-                : "抬头 / 低头 / 左转 / 右转"}{" "}
-              · 每次动作后回正
-            </p>
-          </section>
+          {game.phase === "tutorial" && (
+            <section className="cue practice">
+              <span>循风习剑 / PRACTICE</span>
+              <div className="direction-signal">
+                <strong>
+                  {{ left: "←", right: "→", up: "↑", down: "↓" }[direction]}
+                </strong>
+                <b>{labels[direction]}</b>
+              </div>
+              <h2>{cue}</h2>
+              <p>
+                {direction === "up" || direction === "down"
+                  ? "看敌人的起势：上移后高位横斩，低头躲；下移后低位横斩，抬头躲。"
+                  : "看刀尖举向哪边，刀变红时往同一侧躲。"}
+              </p>
+              <p>
+                {mode === "keyboard"
+                  ? "方向键 ↑ ↓ ← →"
+                  : "抬头 / 低头 / 左转 / 右转"}{" "}
+                · 每次动作后回正
+              </p>
+            </section>
+          )}
+          {game.phase === "trial" && (
+            <section
+              className={`combat-timing ${signal.stage}`}
+              aria-label="人物上方的斩击时机提示"
+            >
+              <div className="strike-heading">
+                <span className="strike-direction">
+                  {{ left: "←", right: "→", up: "↑", down: "↓" }[direction]}{" "}
+                  {labels[direction]}
+                </span>
+                <span className="strike-status">
+                  {signal.stage === "dodge" ? "现在闪避 · GO" : signal.text}
+                </span>
+              </div>
+              <div className="timing" aria-hidden="true">
+                <span
+                  className="safe-window"
+                  style={{
+                    left: `${(ATTACK_TIMING.cueStart / ATTACK_TIMING.impact) * 100}%`,
+                    width: `${((ATTACK_TIMING.cueEnd - ATTACK_TIMING.cueStart) / ATTACK_TIMING.impact) * 100}%`,
+                  }}
+                />
+                <b
+                  style={{
+                    width: `${Math.min(1, game.cycle / ATTACK_TIMING.impact) * 100}%`,
+                  }}
+                />
+              </div>
+              <small className="timing-legend">
+                蓄力 ── 等待 ── <em>绿色区闪避</em>
+              </small>
+            </section>
+          )}
           {game.last && game.time - game.last.time < 1 && (
             <div
               className={"feedback " + (game.last.success ? "success" : "hit")}

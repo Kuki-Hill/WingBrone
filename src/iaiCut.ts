@@ -20,6 +20,10 @@ export function iaiCutPose(dodge: "up" | "down", flank: number, t: number) {
   const reach = stroke * (1 - MathUtils.smoothstep(t, 3.82, 4.8));
   const scale = ENEMY_SCALE + 0.16 + 0.67 * dock;
   const entryHeight = dodge === "down" ? 2.3 : -2.3;
+  const anticipation =
+    MathUtils.smoothstep(t, 0.25, 0.85) *
+    (1 - MathUtils.smoothstep(t, 4.15, 4.85));
+  const preparationY = 0.35 + (dodge === "down" ? 1 : -1) * anticipation;
   // The high sweep crosses the neutral rider's chest; the low one crosses
   // the legs. The opponent's flank height is exaggerated for readability.
   const targetHeight = dodge === "down" ? 1.6 : -0.35;
@@ -29,7 +33,7 @@ export function iaiCutPose(dodge: "up" | "down", flank: number, t: number) {
     (dock * (targetHeight - entryHeight)) / scale;
   const root = new Vector3(
     flank * 6.7 * dock,
-    MathUtils.lerp(0.35, RIDER_Y + entryHeight - 3.3 * scale, dock),
+    MathUtils.lerp(preparationY, RIDER_Y + entryHeight - 3.3 * scale, dock),
     MathUtils.lerp(-22, -3.8, dock),
   );
   const hand = new Vector3(
