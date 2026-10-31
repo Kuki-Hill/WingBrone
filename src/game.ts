@@ -15,7 +15,9 @@ export const vectors: Record<Direction, [number, number]> = {
 export const thresholds = { horizontal: 1.6, vertical: 1.4 };
 export const ATTACK_TIMING = { impact: 3.5, cueStart: 2.5, cueEnd: 3.1 };
 export const SWING_START = 3.22;
-export const RIDER_Y = 0.5;
+export const RIDER_Y = 0.2;
+export const RIDER_SCALE = 1.3;
+export const FLYING_SWORD_SCALE = 1.1;
 export const DODGE_TIMING = { enter: 0.1, holdUntil: 1.1, duration: 1.4 };
 export function attackCue(cycle: number) {
   if (cycle < 1) return { stage: "rest", text: "凝神 · 等待蓄力", count: "" };
@@ -86,7 +88,7 @@ export function attackSchedule(attacks: Direction[], random = Math.random) {
     const impact = end - 0.82 - random() * 0.4;
     const duration =
       direction === "up" || direction === "down"
-        ? 0.13 + random() * 0.06
+        ? 0.09 + random() * 0.04
         : 0.31 + random() * 0.07;
     const slot = {
       start,

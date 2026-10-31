@@ -83,7 +83,7 @@ Desktop-first; no audio. The character animation is procedural. Webcam quality, 
 
 ## Validation and submission status
 
-The latest implementation has **46 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
+The latest implementation has **47 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
 
 The author confirmed the keyboard practice and earlier game-image PNG download in their browser, and reported camera direction, downward-response and latency issues that informed revisions. The newest portrait keepsake still needs manual verification.
 

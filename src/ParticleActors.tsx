@@ -1,8 +1,15 @@
 import { useMemo, useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as T from "three";
-import { Game, thresholds, ATTACK_TIMING, RIDER_Y } from "./game";
-import { iaiCutPose } from "./iaiCut";
+import {
+  Game,
+  thresholds,
+  ATTACK_TIMING,
+  RIDER_Y,
+  RIDER_SCALE,
+  FLYING_SWORD_SCALE,
+} from "./game";
+import { iaiCutPose, upperBodyPoint } from "./iaiCut";
 import { ENEMY_SCALE, lateralCutPose, SLASH_RELEASE } from "./lateralCut";
 
 // Surface samples stay attached to their form while the shader circulates
@@ -12,7 +19,7 @@ function rnd() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
   return seed / 4294967296;
 }
-type Form = "orb" | "robe" | "hat" | "limb" | "blade" | "horn";
+type Form = "orb" | "robe" | "hat" | "limb" | "blade" | "horn" | "leg";
 function sample(form: Form, n: number) {
   const a = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -27,6 +34,12 @@ function sample(form: Form, n: number) {
       const radius = Math.sqrt(1 - h * h) * r;
       x = Math.cos(angle) * radius;
       y = h;
+      z = Math.sin(angle) * radius;
+    } else if (form === "leg") {
+      y = (t - 0.5) * 0.74;
+      const cap = Math.max(0, Math.abs(y) - 0.25);
+      const radius = Math.sqrt(Math.max(0, 0.12 * 0.12 - cap * cap));
+      x = Math.cos(angle) * radius;
       z = Math.sin(angle) * radius;
     } else if (form === "hat") {
       const radius = Math.sqrt(t);
@@ -154,7 +167,7 @@ export function ParticleHero({
   });
   const n = low ? 0.55 : 1;
   return (
-    <group ref={ref}>
+    <group ref={ref} scale={RIDER_SCALE}>
       <Cloud
         game={game}
         calm={calm}
@@ -195,15 +208,19 @@ export function ParticleHero({
           </group>
           <Cloud
             game={game}
-            form="limb"
-            count={200}
+            form="leg"
+            count={300}
             color="#83a99d"
-            position={[s * 0.23, -0.75, 0]}
-            scale={[0.8, 0.6, 0.8]}
+            position={[s * 0.24, -0.43, 0]}
+            scale={[1, 1, 1]}
           />
         </group>
       ))}
-      <group position={[0, -0.83, 0]} rotation={[0, 0.98, 0]} scale={1.3}>
+      <group
+        position={[0, -0.83, 0]}
+        rotation={[0, 0.98, 0]}
+        scale={FLYING_SWORD_SCALE}
+      >
         <group position={[0, 0, 1.3]} rotation={[-Math.PI / 2, 0, 0]}>
           <Cloud
             game={game}
@@ -231,15 +248,6 @@ export function ParticleHero({
             scale={[0.55, 0.78, 0.55]}
           />
         </group>
-        <group position={[0, -0.03, 2.08]} rotation={[Math.PI / 2, 0, 0]}>
-          <Cloud
-            game={game}
-            form="robe"
-            count={450}
-            color="#5da999"
-            scale={[0.18, 1.5, 0.08]}
-          />
-        </group>
       </group>
     </group>
   );
@@ -263,7 +271,10 @@ export function ParticleEnemy({
     rearHand = useRef<T.Group>(null),
     hilt = useRef<T.Group>(null),
     sheath = useRef<T.Group>(null),
-    head = useRef<T.Group>(null);
+    head = useRef<T.Group>(null),
+    torso = useRef<T.Group>(null);
+  const thighs = useRef<(T.Group | null)[]>([null, null]);
+  const shins = useRef<(T.Group | null)[]>([null, null]);
   const steel = useMemo(() => new T.Color("#f3c58d"), []);
   const scarlet = useMemo(() => new T.Color("#ff1713"), []);
   const saber = useMemo(() => new T.Color("#cbffeb"), []);
@@ -296,6 +307,21 @@ export function ParticleEnemy({
     if (lateral) {
       root.current?.scale.setScalar(ENEMY_SCALE);
       head.current?.scale.setScalar(1);
+      if (torso.current) torso.current.rotation.x = 0;
+      [-1, 1].forEach((side, i) => {
+        bone(
+          thighs.current[i],
+          new T.Vector3(side * 1.15, -2.1, 0),
+          new T.Vector3(side * 1.3, -3.8, 0.3),
+          2.8,
+        );
+        bone(
+          shins.current[i],
+          new T.Vector3(side * 1.3, -3.8, 0.3),
+          new T.Vector3(side * 1.45, -5.8, 0.25),
+          2.5,
+        );
+      });
       const pose = lateralCutPose(side, time);
       if (root.current) {
         root.current.position.set(0, 1, pose.rootZ);
@@ -321,12 +347,27 @@ export function ParticleEnemy({
     root.current?.position.copy(pose.root);
     root.current?.scale.setScalar(pose.scale);
     head.current?.scale.setScalar(pose.headScale);
+    if (torso.current) torso.current.rotation.x = pose.torsoTilt;
+    pose.legs.forEach((leg, i) => {
+      bone(thighs.current[i], leg.hip, leg.knee, 2.8);
+      bone(shins.current[i], leg.knee, leg.foot, 2.5);
+    });
     bladeTint.current.copy(pose.red ? scarlet : steel);
     if (weapon.current) weapon.current.visible = active;
     const supportElbow = new T.Vector3(flank * 2.7, 3.8, 0.45);
-    bone(upper.current, new T.Vector3(-flank * 2.4, 4.8, 0), pose.elbow, 2.7);
+    bone(
+      upper.current,
+      upperBodyPoint(new T.Vector3(-flank * 2.4, 4.8, 0), pose.torsoTilt),
+      pose.elbow,
+      2.7,
+    );
     bone(lower.current, pose.elbow, pose.hand, 2);
-    bone(left.current, new T.Vector3(flank * 2.4, 4.8, 0), supportElbow, 2.7);
+    bone(
+      left.current,
+      upperBodyPoint(new T.Vector3(flank * 2.4, 4.8, 0), pose.torsoTilt),
+      supportElbow,
+      2.7,
+    );
     bone(leftForearm.current, supportElbow, pose.sheathMouth, 2);
     frontHand.current?.position.copy(pose.hand);
     rearHand.current?.position.copy(pose.sheathMouth);
@@ -336,64 +377,78 @@ export function ParticleEnemy({
   });
   return (
     <group ref={root} position={[0, 1, -23]} scale={ENEMY_SCALE}>
-      <Cloud
-        game={game}
-        calm={calm}
-        form="robe"
-        count={Math.floor(2800 * n)}
-        color="#5c988c"
-        position={[0, -4, 0]}
-        scale={[4.5, 9, 3]}
-      />
-      <group ref={head} position={[0, 6.1, 0]}>
-        <Cloud
-          game={game}
-          calm={calm}
-          form="orb"
-          count={1200}
-          color="#a4c8b4"
-          scale={[1.25, 1.6, 1]}
-        />
-        {[-1, 1].map((s) => (
-          <group key={s}>
-            <group position={[s * 0.9, 1, 0]} rotation={[0, 0, -s * 0.35]}>
-              <Cloud
-                game={game}
-                form="horn"
-                count={220}
-                color="#dbbc81"
-                scale={[1, 2, 1]}
-              />
-            </group>
+      <group ref={torso} position={[0, 3, 0]}>
+        <group position={[0, -3, 0]}>
+          <Cloud
+            game={game}
+            calm={calm}
+            form="robe"
+            count={Math.floor(2800 * n)}
+            color="#5c988c"
+            position={[0, -4, 0]}
+            scale={[4.5, 9, 3]}
+          />
+          <group ref={head} position={[0, 6.1, 0]}>
             <Cloud
               game={game}
+              calm={calm}
               form="orb"
-              count={60}
-              color="#ffd8a0"
-              position={[s * 0.5, 0.25, 1]}
-              scale={[0.18, 0.09, 0.08]}
+              count={1200}
+              color="#a4c8b4"
+              scale={[1.25, 1.6, 1]}
             />
+            {[-1, 1].map((s) => (
+              <group key={s}>
+                <group position={[s * 0.9, 1, 0]} rotation={[0, 0, -s * 0.35]}>
+                  <Cloud
+                    game={game}
+                    form="horn"
+                    count={220}
+                    color="#dbbc81"
+                    scale={[1, 2, 1]}
+                  />
+                </group>
+                <Cloud
+                  game={game}
+                  form="orb"
+                  count={60}
+                  color="#ffd8a0"
+                  position={[s * 0.5, 0.25, 1]}
+                  scale={[0.18, 0.09, 0.08]}
+                />
+              </group>
+            ))}
           </group>
-        ))}
+          {[-1, 1].map((s) => (
+            <group key={s}>
+              <Cloud
+                game={game}
+                form="orb"
+                count={400}
+                color="#91bcb1"
+                position={[s * 2.4, 4.8, 0]}
+                scale={[1.4, 0.9, 1]}
+              />
+            </group>
+          ))}
+        </group>
       </group>
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <Cloud
-            game={game}
-            form="orb"
-            count={400}
-            color="#91bcb1"
-            position={[s * 2.4, 4.8, 0]}
-            scale={[1.4, 0.9, 1]}
-          />
-          <Cloud
-            game={game}
-            form="limb"
-            count={500}
-            color="#548b83"
-            position={[s * 1.2, -6, 0]}
-            scale={[3, 4, 3]}
-          />
+      {[0, 1].map((i) => (
+        <group key={i}>
+          <group
+            ref={(node) => {
+              thighs.current[i] = node;
+            }}
+          >
+            <Cloud game={game} form="limb" count={340} color="#a2bfa8" />
+          </group>
+          <group
+            ref={(node) => {
+              shins.current[i] = node;
+            }}
+          >
+            <Cloud game={game} form="limb" count={300} color="#94ac99" />
+          </group>
         </group>
       ))}
       <group ref={sheath} visible={false}>

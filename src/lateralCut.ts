@@ -1,7 +1,7 @@
 import { MathUtils, Vector3 } from "three";
 import { ATTACK_TIMING, SWING_START } from "./game";
 
-export const ENEMY_SCALE = 1.12;
+export const ENEMY_SCALE = 1.32;
 export const SLASH_RELEASE = SWING_START + 0.08;
 
 // Local coordinates face the player. Positive X is screen-right.
