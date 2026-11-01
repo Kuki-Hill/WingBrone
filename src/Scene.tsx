@@ -167,8 +167,8 @@ function World({
   });
   return (
     <>
-      <color attach="background" args={["#030707"]} />
-      <fog attach="fog" args={["#030707", 24, 110]} />
+      <color attach="background" args={["#030506"]} />
+      <fog attach="fog" args={["#030506", 24, 110]} />
       <ambientLight intensity={2} />
       <directionalLight
         position={[-10, 18, 10]}
@@ -194,7 +194,7 @@ export default function Scene(props: {
       camera={{ position: [0, 3.1, 13.5], fov: 58, near: 0.1, far: 200 }}
       dpr={[1, 1.5]}
       gl={{ antialias: true }}
-      fallback={<span>此浏览器无法创建三维画布。</span>}
+      fallback={<span>無法建立三維畫布 / WEBGL UNAVAILABLE</span>}
     >
       <World {...props} />
     </Canvas>

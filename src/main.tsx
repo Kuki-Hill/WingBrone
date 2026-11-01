@@ -5,7 +5,6 @@ import {
   Game,
   HeadGate,
   Direction,
-  labels,
   directions,
   attackCue,
   ATTACK_TIMING,
@@ -16,6 +15,14 @@ import { CameraPreview } from "./CameraPreview";
 import { postcard } from "./keepsake";
 import { verdict } from "./verdict";
 import "./style.css";
+import type { UIReview } from "./uiReview";
+import {
+  directionLabels,
+  cueText,
+  statusText,
+  traditional,
+  verdictEnglish,
+} from "./uiText";
 class Boundary extends Component<
   { children: React.ReactNode },
   { error: boolean }
@@ -27,24 +34,35 @@ class Boundary extends Component<
   render() {
     return this.state.error ? (
       <div className="render-error">
-        三维画布无法显示。请使用支持 WebGL 的桌面浏览器。
-        <a href="./README.md">查看运行说明</a>
+        三維畫布無法顯示 / WEBGL UNAVAILABLE
+        <p>
+          請使用支援 WebGL 的桌面瀏覽器。 / Use a WebGL-capable desktop browser.
+        </p>
+        <a href="https://github.com/Kuki-Hill/WingBrone#readme">
+          執行說明 / RUN INSTRUCTIONS ↗
+        </a>
       </div>
     ) : (
       this.props.children
     );
   }
 }
-function App() {
-  const game = useState(() => new Game())[0];
+function App({ review }: { review?: UIReview }) {
+  const game = useState(() => review?.game ?? new Game())[0];
   const [, redraw] = useState(0);
-  const [mode, setMode] = useState<"keyboard" | "camera">("keyboard");
-  const [status, setStatus] = useState("方向键已就绪");
+  const [mode, setMode] = useState<"keyboard" | "camera">(
+    review?.tracking === "lost" ? "camera" : "keyboard",
+  );
+  const [status, setStatus] = useState(
+    review?.tracking === "lost" ? "人脸暂时离开画面 · 已暂停" : "方向键已就绪",
+  );
   const [calibrated, setCalibrated] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [low, setLow] = useState(false);
-  const [calm, setCalm] = useState(false);
+  const [calm, setCalm] = useState(
+    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   const [sensitivity, setSensitivity] = useState(1);
   const [photo, setPhoto] = useState("");
   const [photoError, setPhotoError] = useState("");
@@ -343,16 +361,93 @@ function App() {
     },
     [],
   );
+  // Modal keyboard focus is presentation-only; Escape still uses the existing game handler.
+  useEffect(() => {
+    const modal = document.querySelector<HTMLElement>(
+      ".pause-screen, .results",
+    );
+    if (!modal) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const targets = () =>
+      [
+        ...modal.querySelectorAll<HTMLElement>(
+          "button:not(:disabled), a[href], select, input",
+        ),
+      ].filter((el) => el.getClientRects().length > 0);
+    targets()[0]?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const all = targets();
+      const first = all[0],
+        last = all.at(-1);
+      if (!first || !last) return;
+      if (
+        e.shiftKey &&
+        (document.activeElement === first ||
+          !modal.contains(document.activeElement))
+      ) {
+        e.preventDefault();
+        last.focus();
+      } else if (
+        !e.shiftKey &&
+        (document.activeElement === last ||
+          !modal.contains(document.activeElement))
+      ) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
+    return () => {
+      document.removeEventListener("keydown", trap);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [game.paused, game.phase]);
   const playing = game.phase === "trial" || game.phase === "tutorial";
   const canContinue =
     mode === "keyboard" ||
     (calibrated && health.current.state(performance.now()) === "tracking");
   const direction = game.activeDirection;
   const signal = attackCue(game.cycle);
-  const cue =
-    game.phase === "tutorial" ? "试着" + labels[direction] : signal.text;
+  const reviewView = game.run === 0 ? review : undefined;
+  const cameraPanel = (mode === "camera" ||
+    reviewView?.tracking === "found") && (
+    <CameraPreview
+      camera={camera.current}
+      pose={
+        reviewView?.tracking === "found"
+          ? {
+              found: true,
+              yaw: 0,
+              pitch: 0,
+              duration: 24,
+              box: { x: 0.3, y: 0.2, width: 0.4, height: 0.6 },
+            }
+          : latestPose
+      }
+      relativePose={
+        reviewView?.tracking === "found"
+          ? { yaw: 3, pitch: -2 }
+          : calibrated
+            ? poseState.current
+            : null
+      }
+      sensitivity={sensitivity}
+      armed={gate.current.armed}
+      lastAction={lastHeadAction.current}
+      status={
+        reviewView?.tracking === "found" ? "识别就绪 · 小幅转头即可" : status
+      }
+      expanded={game.phase === "home" || game.paused}
+      onDevice={(id) => enableCamera(id)}
+      onRestart={() => enableCamera()}
+    />
+  );
   return (
-    <main>
+    <main
+      className={`state-${game.phase}${game.paused ? " is-paused" : ""}${mode === "camera" || reviewView?.tracking === "found" ? " has-camera" : ""}`}
+      data-scene-ready={ready}
+    >
       <Boundary>
         <Scene
           game={game}
@@ -363,20 +458,7 @@ function App() {
         />
       </Boundary>
       <div className="vignette" />
-      {mode === "camera" && (
-        <CameraPreview
-          camera={camera.current}
-          pose={latestPose}
-          relativePose={calibrated ? poseState.current : null}
-          sensitivity={sensitivity}
-          armed={gate.current.armed}
-          lastAction={lastHeadAction.current}
-          status={status}
-          expanded={game.phase === "home" || game.paused}
-          onDevice={(id) => enableCamera(id)}
-          onRestart={() => enableCamera()}
-        />
-      )}
+      {!(playing && game.paused) && cameraPanel}
       <header>
         <a
           className="brand"
@@ -389,7 +471,7 @@ function App() {
             update();
           }}
         >
-          御风<span>WINDBORNE / 01</span>
+          WIND//01<span>御風 / PARTICLE INTERCEPTION SYSTEM</span>
         </a>
         <div className="settings">
           <label>
@@ -398,7 +480,7 @@ function App() {
               checked={low}
               onChange={(e) => setLow(e.target.checked)}
             />
-            低画质
+            低畫質 / LOW
           </label>
           <label>
             <input
@@ -406,7 +488,7 @@ function App() {
               checked={calm}
               onChange={(e) => setCalm(e.target.checked)}
             />
-            减弱动态
+            減弱動態 / CALM
           </label>
           {playing && (
             <button
@@ -415,45 +497,62 @@ function App() {
                 update();
               }}
             >
-              暂停 ↗
+              暫停 / PAUSE ↗
             </button>
           )}
         </div>
       </header>
       {game.phase === "home" && (
         <section className="intro">
-          <div className="eyebrow">A BODY-CONTROLLED PARTICLE EXPERIENCE</div>
-          <h1>
-            借一缕风，
+          <div className="eyebrow">EPISODE 01 / BODY-CONTROLLED EXPERIENCE</div>
+          <div className="poster-title" aria-hidden="true">
+            WIND<span>//01</span>
+          </div>
+          <h1>御風。避鋒。</h1>
+          <div className="system-title">
+            PARTICLE
             <br />
-            避一寸锋。
-          </h1>
+            INTERCEPTION SYSTEM
+          </div>
           <p>
-            戴上草帽，踏剑入云。
+            戴上草帽，踏劍入雲。
             <br />
-            以头部的轻微动作，穿过竹海间的十二道剑气。
+            以輕微頭部動作，穿過十二道劍氣。
+            <br />
+            <span lang="en">Move your head. Evade twelve strikes.</span>
           </p>
           <div className="mode">
             <button
               className={mode === "camera" ? "selected" : ""}
+              aria-pressed={mode === "camera"}
               onClick={() => enableCamera()}
             >
-              ◉ 摄像头体感
+              <span className="control-code">01 / CAMERA</span> 攝影機體感
             </button>
             <button
               className={mode === "keyboard" ? "selected" : ""}
+              aria-pressed={mode === "keyboard"}
               onClick={keyboard}
             >
-              ⌨ 方向键体验
+              <span className="control-code">02 / KEYBOARD</span> 方向鍵體驗
             </button>
           </div>
-          <div className="status">{status}</div>
+          <div
+            className={`status ${mode === "camera" && calibrated ? "tracking-ok" : ""}`}
+            role="status"
+          >
+            {statusText(status)}
+          </div>
           {error && (
-            <p className="error">{error}。可重试摄像头或选择方向键。</p>
+            <p className="error">
+              {traditional(error)}
+              <br />
+              請重試或使用方向鍵 / Retry or use the keyboard.
+            </p>
           )}
           {mode === "camera" && (
             <label className="sensitivity">
-              灵敏度
+              靈敏度 / SENSITIVITY
               <input
                 type="range"
                 min=".6"
@@ -469,22 +568,28 @@ function App() {
             disabled={!ready || (mode === "camera" && !calibrated)}
             onClick={start}
           >
-            {ready ? "开始御风 →" : "正在生成竹海…"}
+            {ready ? "開始御風 / ENTER →" : "生成竹海 / LOADING…"}
           </button>
           <small>
-            四次练习 · 一分钟试炼 · 自动精彩留影
+            四向練習 · 一分鐘試煉 · 自動留影
+            <br />4 moves · 60 seconds · A keepsake
             <br />
-            摄像头用于体感和精彩瞬间人脸抓拍；照片仅在本机合成，不上传。
+            體感及留影均在本機處理，不上傳。
+            <br />
+            Camera tracking & portraits stay on your device.
           </small>
         </section>
       )}
       {playing && (
         <>
           <aside className="score">
+            <div className="hud-code">
+              FIELD / 01 <span>INTERCEPT</span>
+            </div>
             <span>
               {game.phase === "tutorial"
-                ? "入门 / " + (game.tutorialIndex + 1) + " OF 4"
-                : "试炼 / " +
+                ? "練習 / DRILL " + (game.tutorialIndex + 1) + " OF 4"
+                : "試煉 / TRIAL " +
                   String(Math.max(0, 60 - Math.floor(game.time))).padStart(
                     2,
                     "0",
@@ -492,34 +597,54 @@ function App() {
                   "s"}
             </span>
             <strong>
-              {game.hits}
-              <i> / 12 避开</i>
+              {String(game.hits).padStart(2, "0")}
+              <i> / 12 避開 / EVADED</i>
             </strong>
             <small>
-              连击 {game.combo}　最高 {game.best}
+              CHAIN {String(game.combo).padStart(2, "0")} / BEST{" "}
+              {String(game.best).padStart(2, "0")}
             </small>
           </aside>
           {game.phase === "tutorial" && (
             <section className="cue practice">
-              <span>循风习剑 / PRACTICE</span>
+              <span>TRAINING / 0{game.tutorialIndex + 1} — 04</span>
               <div className="direction-signal">
-                <strong>
+                <strong aria-hidden="true">
                   {{ left: "←", right: "→", up: "↑", down: "↓" }[direction]}
                 </strong>
-                <b>{labels[direction]}</b>
+                <b>{directionLabels[direction]}</b>
               </div>
-              <h2>{cue}</h2>
+              <h2>循風習劍 / FOLLOW THE WIND</h2>
               <p>
                 {direction === "up" || direction === "down"
-                  ? "看敌人的起势：上移后高位横斩，低头躲；下移后低位横斩，抬头躲。"
-                  : "看刀尖举向哪边，刀变红时往同一侧躲。"}
+                  ? "敵人上移便低頭，下移便抬頭。 / High foe: duck. Low foe: rise."
+                  : "刀尖指向哪邊，變紅時往同側躲。 / Follow the tip. Dodge when red."}
               </p>
               <p>
                 {mode === "keyboard"
-                  ? "方向键 ↑ ↓ ← →"
-                  : "抬头 / 低头 / 左转 / 右转"}{" "}
-                · 每次动作后回正
+                  ? "方向鍵 / ARROWS ↑ ↓ ← →"
+                  : "抬頭・低頭・左轉・右轉 / HEAD MOVEMENTS"}{" "}
+                · 回正 / RECENTER
               </p>
+              <div
+                className="practice-steps"
+                aria-label={`练习 ${game.tutorialIndex + 1} / 4`}
+              >
+                {directions.map((d, i) => (
+                  <span
+                    key={d}
+                    className={
+                      i < game.tutorialIndex
+                        ? "done"
+                        : i === game.tutorialIndex
+                          ? "current"
+                          : ""
+                    }
+                  >
+                    {i + 1} / {directionLabels[d]}
+                  </span>
+                ))}
+              </div>
             </section>
           )}
           {game.phase === "trial" && (
@@ -527,14 +652,16 @@ function App() {
               className={`combat-timing ${signal.stage}`}
               aria-label="人物上方的斩击时机提示"
             >
+              <div className="strike-code">
+                ATK / {String(game.attackIndex + 1).padStart(2, "0")}{" "}
+                <span>{signal.stage.toUpperCase()}</span>
+              </div>
               <div className="strike-heading">
                 <span className="strike-direction">
                   {{ left: "←", right: "→", up: "↑", down: "↓" }[direction]}{" "}
-                  {labels[direction]}
+                  {directionLabels[direction]}
                 </span>
-                <span className="strike-status">
-                  {signal.stage === "dodge" ? "现在闪避 · GO" : signal.text}
-                </span>
+                <span className="strike-status">{cueText[signal.stage]}</span>
               </div>
               <div className="timing" aria-hidden="true">
                 <span
@@ -551,19 +678,21 @@ function App() {
                 />
               </div>
               <small className="timing-legend">
-                蓄力 ── 等待 ── <em>绿色区闪避</em>
+                蓄力 / WAIT <em>綠框內閃避 / EVADE</em>
               </small>
             </section>
           )}
           {game.last && game.time - game.last.time < 1 && (
             <div
               className={"feedback " + (game.last.success ? "success" : "hit")}
+              role="status"
             >
-              {game.last.success ? "避 开" : "命 中"}
+              <span>{game.last.success ? "EVADED" : "IMPACT"}</span>
+              <b>{game.last.success ? "避 開" : "命 中"}</b>
               <small>
                 {game.last.success
-                  ? `${game.last.combo} 连击 · 留住风的轨迹`
-                  : "回到中央，下一次再试"}
+                  ? `${game.last.combo} 連擊 / CHAIN`
+                  : "回正，再試一次 / RECENTER & RETRY"}
               </small>
             </div>
           )}
@@ -571,18 +700,48 @@ function App() {
             <div className="countdown">{Math.ceil(game.countdown)}</div>
           )}
           <footer>
-            <span>小幅动作即可，无需离开座位</span>
-            <span>ESC 暂停 / 继续</span>
+            <span>小幅動作 / SMALL MOVEMENTS</span>
+            <span>ESC 暫停 / PAUSE</span>
           </footer>
         </>
       )}
       {playing && game.paused && (
-        <section className="overlay">
+        <section
+          className={`overlay pause-screen ${mode === "camera" && !canContinue ? "tracking-lost" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pause-title"
+        >
+          <div className="chapter-word" aria-hidden="true">
+            HOLD<span>//01</span>
+          </div>
           <div className="panel">
-            <div className="eyebrow">TAKE A BREATH</div>
-            <h2>风停片刻</h2>
-            <p>{mode === "camera" ? status : "试炼已暂停，准备好后继续。"}</p>
-            {error && <p className="error">{error}</p>}
+            <div className="eyebrow">
+              {mode === "camera" && !canContinue
+                ? "SIGNAL / 00 — TRACKING LOST"
+                : "INTERMISSION / 01 — STANDBY"}
+            </div>
+            <h2 id="pause-title">
+              風停片刻<span>TAKE A BREATH.</span>
+            </h2>
+            <p>
+              {mode === "camera" ? (
+                statusText(status)
+              ) : (
+                <>
+                  試煉已暫停，準備好後繼續。
+                  <br />
+                  Your trial is on hold. Continue when ready.
+                </>
+              )}
+            </p>
+            {error && (
+              <p className="error">
+                {traditional(error)}
+                <br />
+                攝影機錯誤 / CAMERA ERROR
+              </p>
+            )}
             <button
               className="primary"
               disabled={!canContinue}
@@ -593,12 +752,12 @@ function App() {
                 update();
               }}
             >
-              倒数继续 →
+              倒數繼續 / RESUME →
             </button>
             {mode === "camera" && (
               <>
-                <button onClick={recalibrate}>重新校准</button>
-                <button onClick={keyboard}>改用方向键</button>
+                <button onClick={recalibrate}>重新校準 / RECALIBRATE</button>
+                <button onClick={keyboard}>改用方向鍵 / USE KEYBOARD</button>
               </>
             )}
             <button
@@ -609,31 +768,75 @@ function App() {
                 update();
               }}
             >
-              结束并返回
+              結束並返回 / EXIT
             </button>
+            <div className="panel-note">
+              時間與攻擊已凍結 / CLOCK & ATTACKS ON HOLD
+            </div>
           </div>
+          {cameraPanel}
         </section>
       )}
       {game.phase === "results" && (
-        <section className="overlay results">
+        <section
+          className="overlay results"
+          aria-label="試煉結果 / TRIAL RESULTS"
+        >
+          <div className="chapter-word" aria-hidden="true">
+            AFTER<span>//01</span>
+          </div>
           <div className="result-heading">
-            <div className="eyebrow">YOUR MOMENT IN THE WIND</div>
-            <h1>江湖黑历史存档</h1>
-            <h2 className="roast-title">{verdict(game.hits).title}</h2>
-            <p>{verdict(game.hits).line}</p>
+            <div className="eyebrow">DEBRIEF / 01 — TRIAL COMPLETE</div>
+            <h1>
+              江湖黑歷史<span>THE AFTERMATH.</span>
+            </h1>
+            <h2 className="roast-title">
+              {traditional(verdict(game.hits).title)}
+            </h2>
+            <div className="roast-en">{verdictEnglish(game.hits).title}</div>
             <p>
-              避开 {game.hits} / 12 · 成功率{" "}
-              {Math.round((game.hits / 12) * 100)}% · 最高连击 {game.best}
+              {traditional(verdict(game.hits).line)}
+              <br />
+              <span lang="en">{verdictEnglish(game.hits).line}</span>
             </p>
+            <dl className="result-stats">
+              <div>
+                <dt>避開 / EVADED</dt>
+                <dd>
+                  {String(game.hits).padStart(2, "0")}
+                  <small>/12</small>
+                </dd>
+              </div>
+              <div>
+                <dt>成功率 / RATE</dt>
+                <dd>
+                  {Math.round((game.hits / 12) * 100)}
+                  <small>%</small>
+                </dd>
+              </div>
+              <div>
+                <dt>最高連擊 / BEST</dt>
+                <dd>{String(game.best).padStart(2, "0")}</dd>
+              </div>
+            </dl>
+            <div className="panel-note">
+              你的留影只在本機生成。
+              <br />
+              Your keepsake stays on this device.
+            </div>
           </div>
           <div className="postcard">
             {photo ? (
               <img
                 src={photo}
-                alt="本机人脸抓拍、闪避成绩和江湖吐槽评价组成的留念卡"
+                alt="本機人臉抓拍與閃避成績留念卡 / Local portrait and trial score keepsake"
               />
             ) : (
-              <p>{photoError || "正在整理你的江湖黑历史…"}</p>
+              <p>
+                {photoError
+                  ? "留影暫未生成，請重試 / CAPTURE FAILED"
+                  : "整理黑歷史 / PREPARING KEEPSAKE…"}
+              </p>
             )}
           </div>
           <div className="result-actions">
@@ -644,15 +847,17 @@ function App() {
                   href={photo}
                   download="windborne-keepsake.png"
                 >
-                  下载 PNG 留念 ↓
+                  下載留念 / SAVE PNG ↓
                 </a>
                 <a href={photo} target="_blank" rel="noreferrer">
-                  打开图片保存 ↗
+                  開啟圖片 / OPEN IMAGE ↗
                 </a>
               </>
             )}
-            {photoError && <button onClick={retryPhoto}>重试生成留影</button>}
-            <button onClick={start}>再御一次风 →</button>
+            {photoError && (
+              <button onClick={retryPhoto}>重試留影 / RETRY CAPTURE</button>
+            )}
+            <button onClick={start}>再次試煉 / RETRY →</button>
             <button
               onClick={() => {
                 game.phase = "home";
@@ -661,13 +866,26 @@ function App() {
                 update();
               }}
             >
-              返回
+              返回 / HOME
             </button>
           </div>
         </section>
       )}
-      <div className="corner">竹海无尽 · 剑意有形</div>
+      <div className="corner" aria-hidden="true">
+        W/01 — 竹海無盡 / INTO THE WIND
+      </div>
     </main>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+const root = createRoot(document.getElementById("root")!);
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("review")) {
+  void import("./uiReview").then(({ createUIReview, ReviewDock }) => {
+    const review = createUIReview(location.search);
+    root.render(
+      <>
+        <App review={review} />
+        {review && <ReviewDock state={review.state} />}
+      </>,
+    );
+  });
+} else root.render(<App />);

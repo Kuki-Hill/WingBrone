@@ -275,9 +275,9 @@ export function ParticleEnemy({
     torso = useRef<T.Group>(null);
   const thighs = useRef<(T.Group | null)[]>([null, null]);
   const shins = useRef<(T.Group | null)[]>([null, null]);
-  const steel = useMemo(() => new T.Color("#f3c58d"), []);
-  const scarlet = useMemo(() => new T.Color("#ff1713"), []);
-  const saber = useMemo(() => new T.Color("#cbffeb"), []);
+  const steel = useMemo(() => new T.Color("#E8E1D2"), []);
+  const scarlet = useMemo(() => new T.Color("#FF4D27"), []);
+  const saber = useMemo(() => new T.Color("#E8E1D2"), []);
   const bladeTint = useRef(steel.clone());
   const practice = useRef({ step: -1, run: -1, start: 0 });
   const n = low ? 0.6 : 1;
@@ -510,7 +510,7 @@ export function ParticleSlash({ game, low }: { game: Game; low: boolean }) {
     );
     const samples = Array.from({ length: count }, () => [rnd(), rnd(), rnd()]);
     const m = new T.PointsMaterial({
-      color: "#e9b979",
+      color: "#FF4D27",
       size: 0.055,
       transparent: true,
       opacity: 0.7,

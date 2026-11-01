@@ -1,10 +1,18 @@
-# 御风 · Windborne
+# WIND//01 — PARTICLE INTERCEPTION SYSTEM
+
+御風 · Windborne
 
 **Assignment 3: An interactive experience** — an individual browser project.
 
 A straw-hatted sword rider faces twelve attacks in a flowing particle bamboo forest. Turn your head left/right or look up/down to dodge. At the end, receive a locally generated portrait card with your score and a mischievous review of your performance.
 
-一个以头部动作控制的御剑闪避体验：四方向练习 → 一分钟试炼 → 成绩、人脸留影与江湖吐槽。所有照片在浏览器本机处理。
+以頭部動作控制的御劍閃避體驗：四向練習 → 一分鐘試煉 → 成績、人臉留影與江湖吐槽。所有照片均在瀏覽器本機處理。介面採用繁體中文與英語。
+
+![WIND//01 home interface](docs/home-ui.png)
+
+![Actual keyboard trial in the procedural particle scene](docs/gameplay.png)
+
+These screenshots show the current production build without camera imagery. The home, HUD and chapter-card design is original; no anime assets are bundled. Development UI fixtures and screenshot checks are documented in [UI review](docs/ui-review/README.md).
 
 ## Idea and intended user
 
@@ -39,10 +47,10 @@ No API key, paid account or remote inference service is needed. The fixed-versio
 
 ## Controls and main loop
 
-1. Choose **摄像头体感** (camera) or **方向键体验** (keyboard).
+1. Choose **攝影機體感 / CAMERA** (camera) or **方向鍵體驗 / KEYBOARD** (keyboard).
 2. In camera mode, face the screen until calibration completes. The local preview shows face detection, direction strength and camera selection. Use small movements and keep your face in view.
 3. Complete the four practice directions. In keyboard mode use **← → ↑ ↓**. In camera mode turn left/right or look up/down. Return to neutral before the next gesture.
-4. During the 60-second trial, follow the direction arrow. The green **现在转头闪避 / GO** cue appears **one second before impact**; move then. A dodge remains displaced long enough to cover the attack. Mistakes do not end the trial early.
+4. During the 60-second trial, follow the direction arrow. The green **現在閃避 / GO** cue appears **one second before impact**; move then. A dodge remains displaced long enough to cover the attack. Mistakes do not end the trial early.
 5. **Esc** pauses. Resume with a countdown, recalibrate, switch to keyboard or exit. Window blur, a hidden tab or lost tracking also pauses attacks and the clock.
 6. Results show successful dodges out of 12, success rate and best combo. Download the PNG keepsake, open it to save, or retry.
 
@@ -83,11 +91,11 @@ Desktop-first; no audio. The character animation is procedural. Webcam quality, 
 
 ## Validation and submission status
 
-The latest implementation has **48 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
+The latest implementation has **52 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
 
 The author confirmed the keyboard practice and earlier game-image PNG download in their browser, and reported camera direction, downward-response and latency issues that informed revisions. The newest portrait keepsake still needs manual verification.
 
-A classmate who studies kendo tried the game and found the dodge direction hard to read from the opponent. The left/right attacks now use a two-handed sword cue. Dodge toward the raised tip when the blade turns red. For horizontal draws the opponent darts to either flank. Duck under a high draw and rise above a low draw. Each run varies the attack intervals and swing speeds, with shorter intervals later in the minute. The feedback and design changes are recorded in [PROCESS.md](PROCESS.md). A current gameplay screenshot and a playtest of this revision are still pending. See [CREDITS.md](CREDITS.md) for acknowledgements.
+A classmate who studies kendo tried the game and found the dodge direction hard to read from the opponent. The left/right attacks now use a two-handed sword cue. Dodge toward the raised tip when the blade turns red. For horizontal draws the opponent darts to either flank. Duck under a high draw and rise above a low draw. Each run varies the attack intervals and swing speeds, with shorter intervals later in the minute. The feedback and design changes are recorded in [PROCESS.md](PROCESS.md). Current production screenshots and automated keyboard/UI checks are included. A human playtest of the revised visual interface and live-camera export remains pending. See [CREDITS.md](CREDITS.md) for acknowledgements.
 
 Repository: https://github.com/Kuki-Hill/WingBrone
 Assignment deadline: **1 November 2026, 23:59 Hong Kong time**.

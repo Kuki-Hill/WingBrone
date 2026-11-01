@@ -53,7 +53,20 @@ The author reported that the high and low attacks were still difficult to distin
 A second test user suggested centering the timing bar, preferably above the rider, because looking away to the side made it harder to concentrate on the character. I moved the trial timing bar and its short direction/status cue to the horizontal centre above the neutral rider. The green hit window remains visible there. The practice instructions stay in their own panel. These changes respond to the reported observations; a repeat trial of this revision is pending.
 
 - Confirm the initial instructions given during the trial and check whether the revised movement communicates the safe side.
-- Add a real screenshot of the current particle gameplay without camera imagery.
+- Current production gameplay screenshot without camera imagery added in docs/gameplay.png; verify live-camera behaviour separately.
 - Verify the latest webcam direction, timing and portrait export on the target device.
 - Follow README setup from a fresh terminal and check the chosen interruption.
 - Check the public repository while signed out, then submit its URL on Canvas.
+
+
+## UI revision — 1 November 2026
+
+The author requested an original “90s anime tactical title sequence” UI. I kept the procedural particle forest, characters, attacks and input loop. CSS tokens now separate warm-white neutral controls, purple chapter/selection accents, fluorescent-green recognition/safety feedback and orange-red attacks/errors. Home, pause and results use cropped typography and chapter-card composition; the HUD and local camera preview use numbered telemetry. Visible text and keepsake captions are Traditional Chinese and English. The camera capture, photo selection and download mechanism are unchanged.
+
+Codex used the UI UX Pro Max and Playwright CLI skills for design-system/usability checks and staged browser review. **Kept:** semantic colours, visible keyboard focus, centred timing feedback and reduced-motion support. **Rejected:** the skill's generic marketing layout/palette/type recommendations, in favour of the author's supplied palette, local display fonts and original poster direction. No component library or new visual media was installed.
+
+A development-only query fixture was added before UI changes, with fixed poses and scores for six states. It is excluded from the production bootstrap; the production browser check confirmed the query does not select a results fixture. New fixture regression tests supplement the existing gameplay/camera tests, bringing the total to 52 passing tests. The production build passes.
+
+Playwright review covered all six states at 1440×900, 1280×720 and 390×844. Early screenshots were taken before Three.js had rendered, so later checks explicitly wait for scene readiness. The review also caught a home-screen footnote too close to the bottom at 720px height, mobile practice copy too close to the rider, and a camera-panel placement conflict; these were adjusted. Keyboard practice progressed through all four directions and the visible green cue led to a scored dodge. Pause/resume, focus containment, retry, PNG download, camera-denial feedback, keyboard fallback and reduced-motion preference were exercised. Twelve UI-only screenshot baselines matched on a second pass with WebGL hidden. [Review procedures and evidence](docs/ui-review/README.md) describe the limits.
+
+These are developer/automated checks, not a new human trial. They do not establish live webcam comfort or end-to-end camera latency. The two participants' actual feedback recorded above remains the evidence for the earlier animation and timing changes.

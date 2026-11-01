@@ -13,3 +13,8 @@
 - Vite、Vitest、TypeScript：各自作者及开源许可，完整版本见 package-lock.json。
 
 程序化人物、剑、竹林与点阵由本项目代码生成；无第三方音频或外部字体。
+
+
+## WIND//01 interface direction
+
+Original CSS layout and procedural presentation, assisted by OpenAI Codex. The author cited Cowboy Bebop for poster composition and Evangelion for compact tactical information design. Only general typography/composition principles are referenced; no logos, artwork, film frames, fonts, or UI assets from these works are copied or bundled. System fonts are used locally. UI UX Pro Max provided accessibility/design-system guidance; Playwright CLI was used for local browser review. Traditional Chinese/English interface copy and English score captions were authored for this project with Codex assistance.
