@@ -1,3 +1,4 @@
+import { TRIAL } from "./trialConfig";
 export type Direction = "left" | "right" | "up" | "down";
 export const directions: Direction[] = ["left", "right", "up", "down"];
 export const labels: Record<Direction, string> = {
@@ -63,7 +64,12 @@ export function attackStrip(d: Direction, i: number) {
 }
 export function sequence() {
   let seed = Math.floor(Math.random() * 0x100000000);
-  const a = directions.flatMap((d) => [d, d, d]);
+  // Six per direction, plus a randomly rotated extra direction for the 25th.
+  const extra = seed % directions.length;
+  const a = Array.from(
+    { length: TRIAL.attacks },
+    (_, i) => directions[(i + extra) % directions.length],
+  );
   do {
     for (let i = a.length - 1; i > 0; i--) {
       seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -74,22 +80,27 @@ export function sequence() {
   return a;
 }
 export type Phase = "home" | "tutorial" | "trial" | "results";
-// Draw once per run. Normalise the attack slots to one minute, preserving a
-// one-second warning even as the gaps between later attacks get shorter.
+// Start near the former late-game tempo, with modest acceleration and jitter.
+// Keep the one-second actionable warning and a full neutral reset between cuts.
 export function attackSchedule(attacks: Direction[], random = Math.random) {
   const weights = attacks.map(
-    (_, i) => 6.8 - (3.6 * i) / (attacks.length - 1) + (random() - 0.5) * 0.64,
+    (_, i) =>
+      2.7 -
+      (0.6 * i) / Math.max(1, attacks.length - 1) +
+      (random() - 0.5) * 0.2,
   );
   const total = weights.reduce((sum, v) => sum + v, 0);
   let start = 0;
   return attacks.map((direction, i) => {
     const end =
-      i === attacks.length - 1 ? 60 : start + (60 * weights[i]) / total;
-    const impact = end - 0.82 - random() * 0.4;
+      i === attacks.length - 1
+        ? TRIAL.seconds
+        : start + (TRIAL.seconds * weights[i]) / total;
+    const impact = end - 0.55 - random() * 0.15;
     const duration =
       direction === "up" || direction === "down"
-        ? 0.09 + random() * 0.04
-        : 0.31 + random() * 0.07;
+        ? 0.085 + random() * 0.035
+        : 0.26 + random() * 0.06;
     const slot = {
       start,
       end,
@@ -242,7 +253,7 @@ export class Game {
       }
       return;
     }
-    for (let i = this.resolved + 1; i < 12; i++) {
+    for (let i = this.resolved + 1; i < this.attacks.length; i++) {
       const event = this.schedule[i].impact;
       if (event > next) break;
       const [x, y] = this.positionAt(event);
@@ -264,8 +275,8 @@ export class Game {
       if (success && (!this.capture || result.combo >= this.capture.combo))
         this.capture = result;
     }
-    this.time = Math.min(60, next);
-    if (next >= 60) this.phase = "results";
+    this.time = Math.min(TRIAL.seconds, next);
+    if (next >= TRIAL.seconds) this.phase = "results";
   }
 }
 // Looking down tends to hide the eyes sooner than looking up. Require a

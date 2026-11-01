@@ -6,6 +6,8 @@ describe("isolated UI review fixtures", () => {
   it("ignores missing and unknown review routes", () => {
     expect(createUIReview("")).toBeUndefined();
     expect(createUIReview("?review=unknown")).toBeUndefined();
+    expect(createUIReview("?review=home&ui-only=1")!.uiOnly).toBe(true);
+    expect(createUIReview("?review=home")!.uiOnly).toBe(false);
   });
   it("fixes a pose without advancing time, then accepts a real dodge", () => {
     const game = createUIReview(
@@ -21,9 +23,9 @@ describe("isolated UI review fixtures", () => {
     expect(new Game().phase).toBe("home");
   });
   it("clamps result samples and never creates a portrait", () => {
-    const game = createUIReview("?review=results&score=15&combo=99")!.game;
-    expect(game.hits).toBe(12);
-    expect(game.best).toBe(12);
+    const game = createUIReview("?review=results&score=99&combo=99")!.game;
+    expect(game.hits).toBe(25);
+    expect(game.best).toBe(25);
     expect(game.capture).toBeNull();
     expect(createUIReview("?review=results&score=-3")!.game.hits).toBe(0);
   });

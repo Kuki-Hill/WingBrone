@@ -1,10 +1,12 @@
 // Imported only by the DEV bootstrap. Fixtures never request a camera or alter Game.
 import { Game, attackSchedule, type Direction } from "./game";
+import { TRIAL } from "./trialConfig";
 
 export type UIReview = {
   game: Game;
   state: string;
   tracking: "found" | "lost" | null;
+  uiOnly: boolean;
 };
 class ReviewGame extends Game {
   frozen = false;
@@ -43,20 +45,11 @@ export function createUIReview(search: string): UIReview | undefined {
       ? p.get("direction")
       : "left"
   ) as Direction;
-  game.attacks = [
-    direction,
-    "right",
-    "up",
-    "down",
-    "left",
-    "right",
-    "up",
-    "down",
-    "left",
-    "right",
-    "up",
-    "down",
-  ];
+  game.attacks = Array.from({ length: TRIAL.attacks }, (_, i) =>
+    i === 0
+      ? direction
+      : (["left", "right", "up", "down"] as Direction[])[i % 4],
+  );
   game.schedule = attackSchedule(game.attacks, () => 0.5);
   const phases: Record<string, number> = {
     rest: 0.5,
@@ -93,10 +86,10 @@ export function createUIReview(search: string): UIReview | undefined {
     game.tutorialIndex = ["left", "right", "up", "down"].indexOf(direction);
   }
   if (state === "results") {
-    game.time = 60;
+    game.time = TRIAL.seconds;
     game.hits = Math.max(
       0,
-      Math.min(12, Math.floor(Number(p.get("score") ?? 9) || 0)),
+      Math.min(TRIAL.attacks, Math.floor(Number(p.get("score") ?? 19) || 0)),
     );
     game.best = Math.max(
       0,
@@ -117,6 +110,7 @@ export function createUIReview(search: string): UIReview | undefined {
   return {
     game,
     state,
+    uiOnly: p.get("ui-only") === "1",
     tracking:
       state === "tracking-lost"
         ? "lost"

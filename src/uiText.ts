@@ -1,5 +1,6 @@
 // Presentation-only language. Sensor and game state strings remain unchanged.
 import type { Direction } from "./game";
+import { performanceTier, TRIAL } from "./trialConfig";
 export const directionLabels: Record<Direction, string> = {
   left: "向左 / LEFT",
   right: "向右 / RIGHT",
@@ -37,22 +38,23 @@ export function statusText(status: string) {
   return status;
 }
 export function verdictEnglish(hits: number) {
-  if (hits === 12)
+  const tier = performanceTier(hits);
+  if (tier === 4)
     return {
       title: "SUSPICIOUSLY UNTOUCHABLE",
-      line: "Twelve swings. Twelve unpaid overtime shifts for your opponent.",
+      line: `${TRIAL.attacks} swings. ${TRIAL.attacks} unpaid overtime shifts for your opponent.`,
     };
-  if (hits >= 9)
+  if (tier === 3)
     return {
       title: "LEFT THE BLADE ON READ",
       line: "Every strike arrived. You were out of service.",
     };
-  if (hits >= 6)
+  if (tier === 2)
     return {
       title: "PART MASTER, PART TARGET",
       line: "The dodges were technique. The rest was audience participation.",
     };
-  if (hits >= 3)
+  if (tier === 1)
     return {
       title: "FLYING LICENCE PENDING",
       line: "Your head had ideas. The blade declined them.",

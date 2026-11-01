@@ -4,15 +4,15 @@
 
 **Assignment 3: An interactive experience** — an individual browser project.
 
-A straw-hatted sword rider faces twelve attacks in a flowing particle bamboo forest. Turn your head left/right or look up/down to dodge. At the end, receive a locally generated portrait card with your score and a mischievous review of your performance.
+A straw-hatted sword rider faces 25 attacks in a flowing particle bamboo forest. Turn your head left/right or look up/down to dodge. At the end, receive a locally generated portrait card with your score and a mischievous review of your performance.
 
 以頭部動作控制的御劍閃避體驗：四向練習 → 一分鐘試煉 → 成績、人臉留影與江湖吐槽。所有照片均在瀏覽器本機處理。介面採用繁體中文與英語。
 
-![WIND//01 home interface](docs/home-ui.png)
+![WIND//01 home interface](docs/crt-review/home.png)
 
-![Actual keyboard trial in the procedural particle scene](docs/gameplay.png)
+![Actual keyboard trial in the procedural particle scene](docs/crt-review/gameplay.png)
 
-These screenshots show the current production build without camera imagery. The home, HUD and chapter-card design is original; no anime assets are bundled. Development UI fixtures and screenshot checks are documented in [UI review](docs/ui-review/README.md).
+These screenshots show the current production build without camera imagery. The home, HUD and chapter-card design is original; no anime assets are bundled. The default CRT treatment uses static scanlines, raster headings and partially filled blocks; small copy remains solid. The home DISPLAY selector and results CLASSIC/CRT button switch styles locally. Development UI fixtures and screenshot checks are documented in [current CRT and pacing review](docs/crt-review/README.md).
 
 ## Idea and intended user
 
@@ -50,9 +50,9 @@ No API key, paid account or remote inference service is needed. The fixed-versio
 1. Choose **攝影機體感 / CAMERA** (camera) or **方向鍵體驗 / KEYBOARD** (keyboard).
 2. In camera mode, face the screen until calibration completes. The local preview shows face detection, direction strength and camera selection. Use small movements and keep your face in view.
 3. Complete the four practice directions. In keyboard mode use **← → ↑ ↓**. In camera mode turn left/right or look up/down. Return to neutral before the next gesture.
-4. During the 60-second trial, follow the direction arrow. The green **現在閃避 / GO** cue appears **one second before impact**; move then. A dodge remains displaced long enough to cover the attack. Mistakes do not end the trial early.
+4. During the 60-second, 25-attack trial, follow the direction arrow. Attack slots average 2.4 seconds and gradually accelerate; swing speeds still differ by attack type. The green **現在閃避 / GO** cue appears **one second before impact**; move then. A dodge remains displaced long enough to cover the attack. Mistakes do not end the trial early.
 5. **Esc** pauses. Resume with a countdown, recalibrate, switch to keyboard or exit. Window blur, a hidden tab or lost tracking also pauses attacks and the clock.
-6. Results show successful dodges out of 12, success rate and best combo. Download the PNG keepsake, open it to save, or retry.
+6. Results show successful dodges out of 25, success rate and best combo. Download the PNG keepsake, open it to save, or retry.
 
 The portrait is captured from the camera during the trial. Without a usable face capture, the card clearly states that no photo was taken; it still shows the score and caption.
 
@@ -91,7 +91,7 @@ Desktop-first; no audio. The character animation is procedural. Webcam quality, 
 
 ## Validation and submission status
 
-The latest implementation has **52 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
+The latest implementation has **54 passing automated tests** and a passing TypeScript/Vite production build. Tests cover the mirrored sword poses and their safe dodge directions, gesture thresholds, pauses, attack timing, simulated input delay, camera fallback/cleanup, portrait capture and caption tiers.
 
 The author confirmed the keyboard practice and earlier game-image PNG download in their browser, and reported camera direction, downward-response and latency issues that informed revisions. The newest portrait keepsake still needs manual verification.
 
@@ -99,3 +99,10 @@ A classmate who studies kendo tried the game and found the dodge direction hard 
 
 Repository: https://github.com/Kuki-Hill/WingBrone
 Assignment deadline: **1 November 2026, 23:59 Hong Kong time**.
+
+
+## Reversible CRT revision
+
+Use `?theme=crt` or `?theme=classic` to explicitly choose a style. Without a theme query, the optional local preference is used (CRT is the default). Both styles play the same 25-attack game. The PNG keepsake follows the selected style, with all camera capture and composition staying on device.
+
+The complete pre-revision state is retained at `checkpoint/pre-crt-25-20261102` (commit `f0c3208`). The local revision tag `revision/crt-25-20261102` identifies the reversible change. [Rollback details and validation](docs/crt-review/README.md) distinguish visual switching from undoing gameplay changes.

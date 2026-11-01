@@ -18,3 +18,6 @@
 ## WIND//01 interface direction
 
 Original CSS layout and procedural presentation, assisted by OpenAI Codex. The author cited Cowboy Bebop for poster composition and Evangelion for compact tactical information design. Only general typography/composition principles are referenced; no logos, artwork, film frames, fonts, or UI assets from these works are copied or bundled. System fonts are used locally. UI UX Pro Max provided accessibility/design-system guidance; Playwright CLI was used for local browser review. Traditional Chinese/English interface copy and English score captions were authored for this project with Codex assistance.
+
+
+The optional CRT revision uses procedural CSS scanline/hatching patterns and a local Canvas 2D raster-text renderer authored with Codex assistance. It uses installed system fonts only. No CRT image texture, third-party UI kit, font download or real-face sample is included. The explicitly named landing-page-design skill was not installed; the supplied visual brief and existing UI UX Pro Max readability guidance informed the revision.

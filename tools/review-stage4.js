@@ -7,7 +7,7 @@ async (page) => {
   ]) {
     await page.setViewportSize({ width, height });
     for (const state of ["paused", "tracking-lost", "results"]) {
-      await page.goto(`http://127.0.0.1:5175/?review=${state}&score=9&combo=5`);
+      await page.goto(`http://127.0.0.1:5175/?review=${state}&score=19&combo=5`);
       await page.locator('main[data-scene-ready="true"]').waitFor();
       if (state === "results") await page.locator(".postcard img").waitFor();
       await page.waitForTimeout(800);

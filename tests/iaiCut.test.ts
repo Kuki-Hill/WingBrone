@@ -90,9 +90,11 @@ describe("flank draw and variable tempo", () => {
     slots.forEach((slot, i) => {
       const speed = slot.impact - slot.bladeStart;
       const dir = game.attacks[i];
-      expect(dir === "up" || dir === "down" ? speed < 0.2 : speed > 0.3).toBe(
-        true,
-      );
+      expect(
+        dir === "up" || dir === "down"
+          ? speed < 0.13
+          : speed >= 0.26 && speed <= 0.321,
+      ).toBe(true);
       expect(attackPhase(slot.bladeStart, slot)).toBeCloseTo(SWING_START);
       game.time = slot.impact - 1;
       expect(game.activeDirection).toBe(dir);

@@ -1,3 +1,4 @@
+import { TRIAL } from "../src/trialConfig";
 import { describe, it, expect } from "vitest";
 import {
   Game,
@@ -8,8 +9,44 @@ import {
   attackStrip,
   ATTACK_TIMING,
   attackCue,
+  attackSchedule,
+  DODGE_TIMING,
 } from "../src/game";
 describe("trial", () => {
+  it("keeps all 25 quick attacks fair through random timing extremes and simulated input delay", () => {
+    for (const random of [0, 0.5, 1]) {
+      for (const latency of [0, 0.15, 0.3]) {
+        const g = new Game();
+        g.start();
+        g.phase = "trial";
+        g.schedule = attackSchedule(g.attacks, () => random);
+        g.schedule.forEach((slot, i) => {
+          expect(slot.impact - 1).toBeGreaterThan(slot.start);
+          if (i)
+            expect(slot.impact - g.schedule[i - 1].impact).toBeGreaterThan(
+              DODGE_TIMING.duration + 0.1,
+            );
+          g.time = slot.impact - 1 + latency;
+          expect(g.trigger(g.attacks[i])).toBe(true);
+          g.tick(1 - latency + 0.001);
+          expect(g.last?.success).toBe(true);
+        });
+        g.tick(TRIAL.seconds - g.time);
+        expect(g.phase).toBe("results");
+        expect(g.outcomes).toHaveLength(25);
+        expect(g.hits).toBe(25);
+        expect(g.best).toBe(25);
+      }
+    }
+  });
+  it("starts near the former late-game pace and modestly accelerates over the minute", () => {
+    const schedule = attackSchedule(sequence(), () => 0.5);
+    const intervals = schedule.map((s) => s.end - s.start);
+    expect(intervals[0]).toBeCloseTo(2.7);
+    expect(intervals.at(-1)).toBeCloseTo(2.1);
+    expect(schedule.at(-1)!.end).toBe(60);
+    expect(intervals.every((v) => v >= 2 && v <= 2.9)).toBe(true);
+  });
   it("the entire green window allows a successful dodge including 300ms input latency", () => {
     for (const d of directions)
       for (const latency of [0, 0.15, 0.3])
@@ -52,9 +89,9 @@ describe("trial", () => {
   });
   it("balances directions and avoids triples", () => {
     const a = sequence();
-    expect(a).toHaveLength(12);
+    expect(a).toHaveLength(TRIAL.attacks);
     for (const d of directions)
-      expect(a.filter((v) => v === d)).toHaveLength(3);
+      expect([6, 7]).toContain(a.filter((v) => v === d).length);
     expect(a.some((d, i) => i > 1 && d === a[i - 1] && d === a[i - 2])).toBe(
       false,
     );
@@ -121,7 +158,7 @@ describe("trial", () => {
     g.start();
     g.phase = "trial";
     g.tick(61);
-    expect(g.outcomes).toHaveLength(12);
+    expect(g.outcomes).toHaveLength(TRIAL.attacks);
     expect(g.phase).toBe("results");
     expect(g.capture).toBe(null);
     const run = g.run;
@@ -133,13 +170,13 @@ describe("trial", () => {
     const g = new Game();
     g.start();
     g.phase = "trial";
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < TRIAL.attacks; i++) {
       g.time = g.schedule[i].impact - 0.4;
       g.dodge = null;
       if (i % 2 === 0) g.trigger(g.attacks[i]);
       g.tick(0.5);
     }
-    expect(g.capture?.index).toBe(10);
+    expect(g.capture?.index).toBe(24);
     expect(g.best).toBe(1);
   });
   it("does not award an early or wrong-direction dodge", () => {

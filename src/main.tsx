@@ -15,6 +15,9 @@ import { CameraPreview } from "./CameraPreview";
 import { postcard } from "./keepsake";
 import { verdict } from "./verdict";
 import "./style.css";
+import "./crt.css";
+import { TRIAL } from "./trialConfig";
+import { readVisualTheme, THEME_KEY } from "./visualTheme";
 import type { UIReview } from "./uiReview";
 import {
   directionLabels,
@@ -58,7 +61,7 @@ function App({ review }: { review?: UIReview }) {
   );
   const [calibrated, setCalibrated] = useState(false);
   const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(review?.uiOnly ?? false);
   const [low, setLow] = useState(false);
   const [calm, setCalm] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -66,6 +69,9 @@ function App({ review }: { review?: UIReview }) {
   const [sensitivity, setSensitivity] = useState(1);
   const [photo, setPhoto] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [theme, setTheme] = useState(readVisualTheme);
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const camera = useRef<HeadCamera | null>(null);
   const gate = useRef(new HeadGate());
   const lastHeadAction = useRef<{
@@ -219,20 +225,35 @@ function App({ review }: { review?: UIReview }) {
     combo: number,
     run: number,
   ) {
+    const requestedTheme = themeRef.current;
     try {
-      const blob = await postcard(canvas, {
-        combo,
-        hits: game.hits,
-        best: game.best,
-      });
-      if (game.run !== run || game.phase !== "results") return;
+      const blob = await postcard(
+        canvas,
+        {
+          combo,
+          hits: game.hits,
+          best: game.best,
+        },
+        requestedTheme,
+      );
+      if (
+        game.run !== run ||
+        game.phase !== "results" ||
+        themeRef.current !== requestedTheme
+      )
+        return;
       const url = URL.createObjectURL(blob);
       if (photoRef.current) URL.revokeObjectURL(photoRef.current);
       photoRef.current = url;
       setPhoto(url);
       setPhotoError("");
     } catch {
-      if (game.run === run) setPhotoError("留影暂未生成，点击重试。");
+      if (
+        game.run === run &&
+        game.phase === "results" &&
+        themeRef.current === requestedTheme
+      )
+        setPhotoError("留影暂未生成，点击重试。");
     }
   }
   function capturePortrait(): HTMLCanvasElement | null {
@@ -257,6 +278,14 @@ function App({ review }: { review?: UIReview }) {
       void finish(frame, 0, run);
     }
   }
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      /* Optional preference only. */
+    }
+    if (game.phase === "results") retryPhoto();
+  }, [theme]);
   useEffect(() => {
     let raf = 0;
     let previous = performance.now();
@@ -312,7 +341,12 @@ function App({ review }: { review?: UIReview }) {
   }, [mode]);
   useEffect(() => {
     function key(e: KeyboardEvent) {
-      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
+      if (
+        ["INPUT", "SELECT", "TEXTAREA"].includes(
+          (e.target as HTMLElement)?.tagName,
+        )
+      )
+        return;
       if (e.key === "Escape") {
         if (["trial", "tutorial"].includes(game.phase)) {
           if (
@@ -445,19 +479,24 @@ function App({ review }: { review?: UIReview }) {
   );
   return (
     <main
-      className={`state-${game.phase}${game.paused ? " is-paused" : ""}${mode === "camera" || reviewView?.tracking === "found" ? " has-camera" : ""}`}
+      className={`theme-${theme} state-${game.phase}${game.paused ? " is-paused" : ""}${mode === "camera" || reviewView?.tracking === "found" ? " has-camera" : ""}`}
       data-scene-ready={ready}
     >
-      <Boundary>
-        <Scene
-          game={game}
-          low={low}
-          calm={calm}
-          capture={null}
-          onReady={() => setReady(true)}
-        />
-      </Boundary>
+      {review?.uiOnly ? (
+        <div aria-hidden="true" style={{ height: "100%" }} />
+      ) : (
+        <Boundary>
+          <Scene
+            game={game}
+            low={low}
+            calm={calm}
+            capture={null}
+            onReady={() => setReady(true)}
+          />
+        </Boundary>
+      )}
       <div className="vignette" />
+      {theme === "crt" && <div className="crt-texture" aria-hidden="true" />}
       {!(playing && game.paused) && cameraPanel}
       <header>
         <a
@@ -510,16 +549,31 @@ function App({ review }: { review?: UIReview }) {
           </div>
           <h1>御風。避鋒。</h1>
           <div className="system-title">
-            PARTICLE
-            <br />
-            INTERCEPTION SYSTEM
+            <span>
+              PARTICLE
+              <br />
+              INTERCEPTION SYSTEM
+            </span>
+            <label className="theme-choice">
+              顯示 / DISPLAY
+              <select
+                aria-label="顯示風格 / DISPLAY STYLE"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as "crt" | "classic")}
+              >
+                <option value="crt">CRT 紋理 / CRT</option>
+                <option value="classic">原版 / CLASSIC</option>
+              </select>
+            </label>
           </div>
           <p>
             戴上草帽，踏劍入雲。
             <br />
-            以輕微頭部動作，穿過十二道劍氣。
+            以輕微頭部動作，穿過 {TRIAL.attacks} 道劍氣。
             <br />
-            <span lang="en">Move your head. Evade twelve strikes.</span>
+            <span lang="en">
+              Move your head. Evade {TRIAL.attacks} strikes.
+            </span>
           </p>
           <div className="mode">
             <button
@@ -571,8 +625,8 @@ function App({ review }: { review?: UIReview }) {
             {ready ? "開始御風 / ENTER →" : "生成竹海 / LOADING…"}
           </button>
           <small>
-            四向練習 · 一分鐘試煉 · 自動留影
-            <br />4 moves · 60 seconds · A keepsake
+            四向練習 · {TRIAL.attacks} 次斬擊 · 自動留影
+            <br />4 moves · {TRIAL.seconds} seconds · A keepsake
             <br />
             體感及留影均在本機處理，不上傳。
             <br />
@@ -590,15 +644,14 @@ function App({ review }: { review?: UIReview }) {
               {game.phase === "tutorial"
                 ? "練習 / DRILL " + (game.tutorialIndex + 1) + " OF 4"
                 : "試煉 / TRIAL " +
-                  String(Math.max(0, 60 - Math.floor(game.time))).padStart(
-                    2,
-                    "0",
-                  ) +
+                  String(
+                    Math.max(0, TRIAL.seconds - Math.floor(game.time)),
+                  ).padStart(2, "0") +
                   "s"}
             </span>
             <strong>
               {String(game.hits).padStart(2, "0")}
-              <i> / 12 避開 / EVADED</i>
+              <i> / {TRIAL.attacks} 避開 / EVADED</i>
             </strong>
             <small>
               CHAIN {String(game.combo).padStart(2, "0")} / BEST{" "}
@@ -804,13 +857,13 @@ function App({ review }: { review?: UIReview }) {
                 <dt>避開 / EVADED</dt>
                 <dd>
                   {String(game.hits).padStart(2, "0")}
-                  <small>/12</small>
+                  <small>/{TRIAL.attacks}</small>
                 </dd>
               </div>
               <div>
                 <dt>成功率 / RATE</dt>
                 <dd>
-                  {Math.round((game.hits / 12) * 100)}
+                  {Math.round((game.hits / TRIAL.attacks) * 100)}
                   <small>%</small>
                 </dd>
               </div>
@@ -826,6 +879,9 @@ function App({ review }: { review?: UIReview }) {
             </div>
           </div>
           <div className="postcard">
+            <div className="archive-label">
+              留影存檔 / LOCAL KEEPSAKE <span>W / 01</span>
+            </div>
             {photo ? (
               <img
                 src={photo}
@@ -858,6 +914,11 @@ function App({ review }: { review?: UIReview }) {
               <button onClick={retryPhoto}>重試留影 / RETRY CAPTURE</button>
             )}
             <button onClick={start}>再次試煉 / RETRY →</button>
+            <button
+              onClick={() => setTheme(theme === "crt" ? "classic" : "crt")}
+            >
+              {theme === "crt" ? "切回原版 / CLASSIC" : "CRT 樣式 / CRT"}
+            </button>
             <button
               onClick={() => {
                 game.phase = "home";

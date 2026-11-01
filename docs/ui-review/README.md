@@ -1,5 +1,7 @@
 # WIND//01 — UI review
 
+Historical review of the 1 November version. The current CRT treatment and 25-attack trial are documented in [the latest review](../crt-review/README.md). Baselines below preserve the earlier design.
+
 ## Original visual system
 
 The interface uses the composition principles of 1990s anime title sequences: cropped display type, asymmetry, chapter numbering, sharp rules, restrained diagonal blocks, and compact tactical annotations. Cowboy Bebop and Evangelion were references for typography and information hierarchy only. No logos, character art, frames, or interface assets from those works are included.
