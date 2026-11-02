@@ -31,7 +31,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5174/**. Keep the terminal running. On Windows, after installing dependencies, you can also double-click `start-preview.cmd`.
+Open **http://127.0.0.1:5174/**. Keep the terminal running. On Windows, after installing dependencies, double-click `start-preview.cmd` to start the preview and open the browser. Keep its window open while playing; Ctrl+C stops the server. If the project's preview is already running, the launcher reuses it. After restarting the computer, launch it again before opening the local URL.
 
 On Windows, stop this project's running preview before reinstalling dependencies with `npm ci`; otherwise its native build dependency can remain locked by the preview process.
 
