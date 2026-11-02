@@ -4,6 +4,10 @@
 
 **Assignment 3: An interactive experience** — an individual browser project.
 
+**[Play online / 線上體驗](https://kuki-hill.github.io/WingBrone/)** · **[Source repository / 作業原始碼](https://github.com/Kuki-Hill/WingBrone)**
+
+Use a desktop browser with WebGL. Allow camera access for head controls, or choose keyboard mode. The first visit downloads the bundled recognition model; portraits and camera frames stay on your device.
+
 A straw-hatted sword rider faces 25 attacks in a flowing particle bamboo forest. Turn your head left/right or look up/down to dodge. At the end, receive a locally generated portrait card with your score and a mischievous review of your performance.
 
 以頭部動作控制的御劍閃避體驗：四向練習 → 一分鐘試煉 → 成績、人臉留影與江湖吐槽。所有照片均在瀏覽器本機處理。介面採用繁體中文與英語。
@@ -41,7 +45,15 @@ npm run build
 npx vite preview --host 127.0.0.1 --port 5174 --strictPort
 ```
 
-The production files are in `dist/`. Serve them over HTTPS if deploying publicly. Opening `index.html` directly is not supported. There is no hosted live demo in this first upload.
+The production files are in `dist/`. Opening `index.html` directly is not supported.
+
+### Public deployment and assignment submission
+
+GitHub Pages serves the HTTPS demo at **https://kuki-hill.github.io/WingBrone/**. The workflow in `.github/workflows/pages.yml` installs the locked dependencies with `npm ci`, runs tests, builds with `npm run build -- --base=/WingBrone/`, and deploys only `dist/` after a successful build. Pushes to `main` publish updates automatically; the workflow can also be run manually from GitHub Actions. Pages must use **Settings → Pages → Source: GitHub Actions**.
+
+The repository-specific build base makes JavaScript, the face-recognition Worker, model and WASM files load beneath `/WingBrone/`. The local development command keeps its original root URL. The workflow uses GitHub's temporary deployment token and needs no committed API keys or separate service account. Deployment follows the [official Vite GitHub Pages guide](https://vite.dev/guide/static-deploy.html#github-pages).
+
+For Canvas, submit the **public repository URL**, not just the playable link: **https://github.com/Kuki-Hill/WingBrone**. Source, required assets, screenshots, README, PROCESS, credits and existing development history remain in the repository. The demo is an additional way to try the work. Human trial observations and any remaining limitations are documented in `PROCESS.md`.
 
 No API key, paid account or remote inference service is needed. The fixed-version MediaPipe model and WASM assets are included in `public/vision/` (approximately 26 MB). Runtime detection stays in the browser.
 
